@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "com.example.chassis.hello",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": { "zh-Hans": "示例外部插件", "en": "Hello External Plugin" },
+  "summary": { "zh-Hans": "演示外部插件包：点击计数 + 全局快捷键 + 设置页", "en": "Demo external plugin: click counter, hot key and settings page" },
+  "iconSystemName": "hand.wave",
+  "requiredCapabilities": [],
+  "optionalCapabilities": [],
+  "vendor": "Chassis Samples"
+}

@@ -4,3 +4,5 @@ DerivedData/
 *.xcodeproj
 *.xcworkspace
 xcuserdata/
+Examples/dist/
+Examples/*/.build/

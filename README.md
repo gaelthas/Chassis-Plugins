@@ -36,6 +36,16 @@ swift build
 - 插件之间互不可见（独立 module）
 - target 名用 PascalCase；插件 ID 用反向域名，且发布后不可更改
 
+## 外部插件示例
+
+`Examples/HelloPlugin` 是一个**只依赖 C ABI**（`Packages/PluginABI`）的示例插件：
+点击计数、全局快捷键、自有配置、SwiftUI 设置页。它不依赖 PluginAPI/PluginKit，
+证明第三方可以用任意语言/工具链实现插件包。
+
+```bash
+./Examples/build-hello.sh     # 产出 Examples/dist/HelloPlugin.chassisplugin（ad-hoc 签名）
+```
+
 ## 文档
 
 - 插件开发规范：`docs/Plugin-Development-Guide.md`
