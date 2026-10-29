@@ -1,0 +1,11 @@
+"usage.title" = "使用时长统计";
+"usage.summary" = "统计各应用的前台活跃时长（按日聚合，纯本地，无需任何系统授权）";
+"plugin.inactive" = "插件未激活";
+
+"section.today" = "今天";
+"section.week" = "最近 7 天";
+"usage.enabled" = "记录应用使用时长";
+"usage.empty" = "今天还没有记录。切换到其他应用后会开始计时。";
+"usage.todayTotal" = "今日合计";
+"usage.reset" = "清除全部统计数据";
+"usage.note" = "数据只保存在本机的插件配置里，最多保留 30 天（当前 %lld 天）。基座自己不计入统计；系统休眠与锁屏期间暂停计时。";

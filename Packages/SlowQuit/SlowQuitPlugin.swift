@@ -156,8 +156,9 @@ public final class SlowQuitPlugin: FeaturePlugin {
         let front = NSWorkspace.shared.frontmostApplication
         endSession()
 
-        guard let front, front.bundleIdentifier != Bundle.main.bundleIdentifier else {
-            model.append("skip quit: frontmost is this app")
+        guard let front, front.activationPolicy == .regular, front.bundleIdentifier != Bundle.main.bundleIdentifier else {
+            // 前台可能是 helper 子进程或基座自己：都不该被 terminate。
+            model.append("skip quit: frontmost is not a regular app")
             return
         }
         let name = front.localizedName ?? "-"

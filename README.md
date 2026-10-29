@@ -14,6 +14,8 @@ Chassis/                      ← 基座仓库
         ├── DockActions/      ← 点击 Dock 图标最小化 + Dock 快捷键（含黑白名单）
         ├── SlowQuit/         ← 长按 ⌘Q 才退出前台应用 + 进度环
         ├── WindowSwitcher/   ← ⌥Tab 窗口级切换器（图标 / 实时缩略图）
+        ├── DockHoverPreview/ ← Dock 悬停窗口预览（图标 / 实时缩略图）
+        ├── UsageStatistics/  ← 应用使用时长统计（零权限）
         └── Harness/          ← 基座探针插件（仅 Debug 注册）
 ```
 

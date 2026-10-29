@@ -29,6 +29,7 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
 
     private(set) var settingsModel: WindowSwitcherModel?
     private let panel = SwitcherPanel()
+    private let thumbnails = ThumbnailGovernor()
 
     /// tap 线程需要知道「切换器是否打开」以决定是否吞掉导航键。
     private let openFlag = AtomicFlag(false)
@@ -203,7 +204,8 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
                 showTitles: model.showWindowTitles
             )
             model.append("opened with \(self.windows.count) window(s)")
-            self.loadThumbnailsIfNeeded()
+            let session = self.thumbnails.beginSession()
+            self.loadThumbnailsIfNeeded(session: session)
         }
     }
 
@@ -250,20 +252,34 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
 
     // MARK: - 缩略图
 
-    private func loadThumbnailsIfNeeded() {
+    private func loadThumbnailsIfNeeded(session: Int) {
         guard let model = settingsModel, let context else { return }
         guard model.mode == .thumbnails else { return }
+
         guard context.permissions.status(of: .screenCapture) else {
             model.append("thumbnails need screen recording; falling back to icons")
             return
         }
+        guard !thumbnails.isCoolingDown else {
+            model.append("thumbnail capture cooling down; icons only")
+            return
+        }
 
         let targets = Array(windows.prefix(max(1, model.maxThumbnails)))
+
+        // 先贴缓存：同一批窗口再次打开时无需重新截图。
+        for window in targets {
+            if let cached = thumbnails.cached(window.windowID) {
+                panel.setThumbnail(windowID: window.windowID, image: cached)
+            }
+        }
+
         thumbnailTask = Task { [weak self] in
             for window in targets {
-                guard !Task.isCancelled else { return }
-                if let image = await ThumbnailProvider.capture(windowID: window.windowID) {
-                    self?.panel.setThumbnail(windowID: window.windowID, image: image)
+                guard !Task.isCancelled, let self, self.thumbnails.currentGeneration == session else { return }
+                guard self.thumbnails.shouldAttempt(window.windowID) else { continue }
+                if let image = await self.thumbnails.capture(windowID: window.windowID, session: session) {
+                    self.panel.setThumbnail(windowID: window.windowID, image: image)
                 }
             }
         }

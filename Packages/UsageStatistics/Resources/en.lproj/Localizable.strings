@@ -1,0 +1,11 @@
+"usage.title" = "Usage Statistics";
+"usage.summary" = "Tracks how long each app stays in the foreground (daily buckets, local only, no permissions)";
+"plugin.inactive" = "Plugin is not active";
+
+"section.today" = "Today";
+"section.week" = "Last 7 days";
+"usage.enabled" = "Record app usage";
+"usage.empty" = "Nothing recorded today. Switch to another app to start timing.";
+"usage.todayTotal" = "Today total";
+"usage.reset" = "Clear all statistics";
+"usage.note" = "Data stays in this plugin's local configuration and is kept for at most 30 days (%lld days recorded). The host itself is not counted; timing pauses during sleep and screen lock.";

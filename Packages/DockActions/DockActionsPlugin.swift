@@ -94,6 +94,8 @@ public final class DockActionsPlugin: FeaturePlugin {
         guard now - lastActionTime > actionCooldown else { return }
 
         guard let app = NSRunningApplication(processIdentifier: pid),
+              // helper / XPC 子进程占住 frontmost 时不做判定，避免「点了没反应」或最小化错对象。
+              app.activationPolicy == .regular,
               let bundleID = app.bundleIdentifier,
               let appName = app.localizedName else { return }
         guard model.allows(bundleID: bundleID) else { return }

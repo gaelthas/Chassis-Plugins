@@ -1,0 +1,21 @@
+"dockHover.title" = "Dock Hover Preview";
+"dockHover.summary" = "Hovering a Dock icon pops up that app's windows above it; click one to switch";
+"plugin.inactive" = "Plugin is not active";
+
+"section.behavior" = "Behavior";
+"hover.enabled" = "Enable hover preview";
+"hover.mode" = "Display mode";
+"hover.mode.icons" = "Icons";
+"hover.mode.thumbnails" = "Live thumbnails";
+"hover.showTitles" = "Show window titles";
+"hover.delay" = "Delay before showing";
+"hover.maxWindows" = "Max windows shown";
+"hover.help" = "The preview appears only after the pointer rests on a Dock icon for the configured delay; it hides 0.3s after leaving the icon or the panel. Live thumbnails require Screen Recording; without it the preview falls back to icons.";
+"hover.permissionNeeded" = "Screen Recording is not granted";
+"hover.requestPermission" = "Grant";
+
+"section.events" = "Event output";
+"events.empty" = "No events yet.";
+"events.clear" = "Clear";
+
+"reset" = "Reset this plugin's configuration";
