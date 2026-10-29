@@ -1,0 +1,17 @@
+"slowQuit.title" = "慢速退出";
+"slowQuit.summary" = "按住 ⌘Q 达到设定时长才退出前台应用，避免误触退出";
+"plugin.inactive" = "插件未激活";
+
+"section.behavior" = "行为";
+"quit.enabled" = "启用长按 ⌘Q 退出";
+"quit.showHUD" = "按住期间显示进度环";
+"quit.threshold" = "需要按住的时长";
+"quit.help" = "启用后 ⌘Q 会被本插件接管：短按不会退出，按住到进度环走满才退出。切换应用或输入源中断会取消本次计时。";
+
+"hud.caption" = "继续按以退出";
+
+"section.events" = "事件输出";
+"events.empty" = "暂无事件。";
+"events.clear" = "清空";
+
+"reset" = "重置此插件配置";

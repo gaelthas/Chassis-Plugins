@@ -1,0 +1,29 @@
+"dockActions.title" = "Dock Actions";
+"dockActions.summary" = "Click the frontmost app's Dock icon to minimize its windows; use modifier + 1–9 to jump between Dock apps";
+"plugin.inactive" = "Plugin is not active";
+
+"section.click" = "Click to minimize";
+"click.enabled" = "Minimize when clicking the frontmost app's Dock icon";
+"click.exitFullScreenFirst" = "Leave full screen before minimizing";
+"click.help" = "Only triggers when the clicked icon belongs to the frontmost app; other icons are handled by the system. Apps that were already fully minimized before the click are skipped, so the native restore is not fought over.";
+
+"section.shortcuts" = "Dock shortcuts";
+"shortcuts.enabled" = "Enable Dock shortcuts";
+"shortcuts.modifiers" = "Modifiers";
+"shortcuts.digitsSuffix" = " + 1–9";
+"shortcuts.help" = "%@ + 1–9: switch to the Nth Dock app (minimize if already frontmost); %@ + ↓: minimize the current app. Conflicting combinations are reported here and never override an existing registration.";
+"shortcuts.conflict" = "Failed to register:";
+
+"section.rules" = "App rules";
+"rules.mode" = "Rule mode";
+"rules.mode.off" = "All apps";
+"rules.mode.blacklist" = "Blacklist";
+"rules.mode.whitelist" = "Whitelist";
+"rules.addFrontmost" = "Add the frontmost app";
+"rules.help" = "Rules only constrain click-to-minimize; shortcuts are explicit user actions and are not filtered.";
+
+"section.events" = "Event output";
+"events.empty" = "No events yet.";
+"events.clear" = "Clear";
+
+"reset" = "Reset this plugin's configuration";

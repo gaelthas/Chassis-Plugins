@@ -12,6 +12,9 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "Harness", targets: ["Harness"]),
+        .library(name: "DockActions", targets: ["DockActions"]),
+        .library(name: "SlowQuit", targets: ["SlowQuit"]),
+        .library(name: "WindowSwitcher", targets: ["WindowSwitcher"]),
     ],
     dependencies: [
         .package(path: "../Packages/PluginAPI"),
@@ -25,6 +28,30 @@ let package = Package(
                 .product(name: "PluginSupport", package: "PluginSupport"),
             ],
             path: "Packages/Harness",
+            resources: [.process("Resources")]
+        ),
+        .target(
+            name: "DockActions",
+            dependencies: [
+                .product(name: "PluginAPI", package: "PluginAPI"),
+            ],
+            path: "Packages/DockActions",
+            resources: [.process("Resources")]
+        ),
+        .target(
+            name: "SlowQuit",
+            dependencies: [
+                .product(name: "PluginAPI", package: "PluginAPI"),
+            ],
+            path: "Packages/SlowQuit",
+            resources: [.process("Resources")]
+        ),
+        .target(
+            name: "WindowSwitcher",
+            dependencies: [
+                .product(name: "PluginAPI", package: "PluginAPI"),
+            ],
+            path: "Packages/WindowSwitcher",
             resources: [.process("Resources")]
         ),
     ]

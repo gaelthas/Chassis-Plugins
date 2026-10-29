@@ -1,0 +1,29 @@
+"dockActions.title" = "Dock 动作";
+"dockActions.summary" = "点击 Dock 中前台应用的图标即可最小化窗口；用修饰键 + 1~9 快速切换 Dock 应用";
+"plugin.inactive" = "插件未激活";
+
+"section.click" = "点击最小化";
+"click.enabled" = "点击前台应用的 Dock 图标时最小化";
+"click.exitFullScreenFirst" = "全屏窗口先退出全屏再最小化";
+"click.help" = "仅当点击的是「当前前台应用」的 Dock 图标时生效；点击其他图标仍交给系统处理。点击前已全部最小化的应用会被跳过，避免与系统原生恢复动作打架。";
+
+"section.shortcuts" = "Dock 快捷键";
+"shortcuts.enabled" = "启用 Dock 快捷键";
+"shortcuts.modifiers" = "修饰键";
+"shortcuts.digitsSuffix" = " + 1~9";
+"shortcuts.help" = "%@ + 1~9：切换到 Dock 第 N 个应用（已是前台则最小化）；%@ + ↓：最小化当前应用。冲突的组合键会在此提示，且不会覆盖已有注册。";
+"shortcuts.conflict" = "以下组合键注册失败：";
+
+"section.rules" = "应用名单";
+"rules.mode" = "名单模式";
+"rules.mode.off" = "全部应用";
+"rules.mode.blacklist" = "黑名单";
+"rules.mode.whitelist" = "白名单";
+"rules.addFrontmost" = "把当前前台应用加入名单";
+"rules.help" = "名单只约束「点击最小化」；快捷键是你主动操作，不受名单影响。";
+
+"section.events" = "事件输出";
+"events.empty" = "暂无事件。";
+"events.clear" = "清空";
+
+"reset" = "重置此插件配置";

@@ -1,0 +1,22 @@
+"windowSwitcher.title" = "Window Switcher";
+"windowSwitcher.summary" = "Hold ⌥ and press Tab to switch between all windows (⌘Tab only switches apps)";
+"plugin.inactive" = "Plugin is not active";
+
+"section.usage" = "Usage";
+"usage.help" = "Hold ⌥ and press Tab to move forward, ⇧Tab to move back; arrow keys work too, Return commits immediately, Esc cancels. Releasing ⌥ switches to the selected window.";
+
+"section.display" = "Display";
+"display.mode" = "Display mode";
+"display.mode.icons" = "Icons";
+"display.mode.thumbnails" = "Live thumbnails";
+"display.showTitles" = "Show window titles";
+"display.maxThumbnails" = "Max captured windows";
+"display.thumbnailHelp" = "Live thumbnails require Screen Recording; without it the switcher falls back to icons. Captures run sequentially, so the first frame is slower with many windows.";
+"display.permissionNeeded" = "Screen Recording is not granted";
+"display.requestPermission" = "Grant";
+
+"section.events" = "Event output";
+"events.empty" = "No events yet.";
+"events.clear" = "Clear";
+
+"reset" = "Reset this plugin's configuration";

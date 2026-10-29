@@ -1,0 +1,17 @@
+"slowQuit.title" = "Slow Quit";
+"slowQuit.summary" = "Hold ⌘Q for a set duration before the frontmost app quits, preventing accidental quits";
+"plugin.inactive" = "Plugin is not active";
+
+"section.behavior" = "Behavior";
+"quit.enabled" = "Enable hold-⌘Q to quit";
+"quit.showHUD" = "Show a progress ring while holding";
+"quit.threshold" = "Hold duration";
+"quit.help" = "When enabled this plugin takes over ⌘Q: a short press does nothing, holding until the ring completes quits the app. Switching apps or losing the input source cancels the timer.";
+
+"hud.caption" = "Keep holding to quit";
+
+"section.events" = "Event output";
+"events.empty" = "No events yet.";
+"events.clear" = "Clear";
+
+"reset" = "Reset this plugin's configuration";

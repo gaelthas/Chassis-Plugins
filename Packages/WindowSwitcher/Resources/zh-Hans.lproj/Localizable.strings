@@ -1,0 +1,22 @@
+"windowSwitcher.title" = "窗口切换器";
+"windowSwitcher.summary" = "按住 ⌥ 按 Tab 在所有窗口之间切换（系统 ⌘Tab 只到应用级）";
+"plugin.inactive" = "插件未激活";
+
+"section.usage" = "用法";
+"usage.help" = "按住 ⌥ 不放，按 Tab 前进、⇧Tab 后退；方向键也可移动，回车立即切换，Esc 取消。松开 ⌥ 时切换到选中窗口。";
+
+"section.display" = "显示";
+"display.mode" = "显示模式";
+"display.mode.icons" = "图标";
+"display.mode.thumbnails" = "实时缩略图";
+"display.showTitles" = "显示窗口标题";
+"display.maxThumbnails" = "最多截取窗口数";
+"display.thumbnailHelp" = "实时缩略图需要「屏幕录制」授权；未授权时自动退回图标模式。截图按顺序逐张进行，窗口很多时首帧会稍慢。";
+"display.permissionNeeded" = "尚未授予屏幕录制权限";
+"display.requestPermission" = "去授权";
+
+"section.events" = "事件输出";
+"events.empty" = "暂无事件。";
+"events.clear" = "清空";
+
+"reset" = "重置此插件配置";
