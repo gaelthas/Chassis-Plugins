@@ -123,10 +123,9 @@ struct HoverGrid: View {
         state.mode == .thumbnails ? 220 : 100
     }
 
+    /// 悬停预览只展示单个应用：按窗口数收窄，最多 3 列，避免看起来像切换器。
     private var columns: [GridItem] {
-        let availableWidth = idealWidth - 60
-        let maxColumns = Int(max(1, floor(availableWidth / (itemWidth + 20))))
-        let count = state.windows.isEmpty ? 1 : min(state.windows.count, maxColumns)
+        let count = max(1, min(state.windows.count, 3))
         return Array(repeating: GridItem(.fixed(itemWidth), spacing: 20), count: count)
     }
 
@@ -156,7 +155,7 @@ struct HoverGrid: View {
             )
         }
         .padding(24)
-        .frame(maxWidth: idealWidth)
+        .fixedSize()
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 16)
         .onAppear {

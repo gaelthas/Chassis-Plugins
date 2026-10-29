@@ -57,16 +57,20 @@ enum HoverWindowCatalog {
         return result
     }
 
-    /// 应用自身 pid + 同 bundle 的 helper 进程 pid。
+    /// 应用自身 pid + **位于该 app 包内**的 helper 进程 pid。
+    ///
+    /// 注意不能向上退两级目录：`/Applications/Safari.app` 退两级会变成 `/`，
+    /// 那样会把所有应用都算进来，悬停预览就退化成了窗口切换器。
     private static func ownedProcessIDs(of appPID: pid_t) -> Set<pid_t> {
         var pids: Set<pid_t> = [appPID]
         guard let app = NSRunningApplication(processIdentifier: appPID),
-              let container = app.bundleURL?.standardizedFileURL else {
+              let bundlePath = app.bundleURL?.standardizedFileURL.path else {
             return pids
         }
-        let root = container.deletingLastPathComponent().deletingLastPathComponent().path
+        let prefix = bundlePath.hasSuffix("/") ? bundlePath : bundlePath + "/"
         for candidate in NSWorkspace.shared.runningApplications {
-            guard let url = candidate.bundleURL?.standardizedFileURL.path, url.hasPrefix(root) else { continue }
+            guard let path = candidate.bundleURL?.standardizedFileURL.path,
+                  path == bundlePath || path.hasPrefix(prefix) else { continue }
             pids.insert(candidate.processIdentifier)
         }
         return pids
