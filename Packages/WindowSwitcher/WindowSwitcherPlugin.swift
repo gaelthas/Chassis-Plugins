@@ -201,7 +201,11 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
                 windows: self.windows,
                 selected: 0,
                 mode: model.mode,
-                showTitles: model.showWindowTitles
+                showTitles: model.showWindowTitles,
+                onSelect: { [weak self] window in
+                    // 点击卡片立即切换：与 Dock2Min 的 mouseHover 触发源行为一致。
+                    self?.selectFromPanel(window)
+                }
             )
             model.append("opened with \(self.windows.count) window(s)")
             let session = self.thumbnails.beginSession()
@@ -213,6 +217,17 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
         guard isOpen, !windows.isEmpty else { return }
         selected = (selected + delta + windows.count) % windows.count
         panel.update(selected: selected)
+    }
+
+    private func selectFromPanel(_ window: SwitcherWindow) {
+        guard isOpen, let context else { return }
+        close(reason: "committed")
+        Task {
+            let ok = (try? await context.performBackground {
+                WindowActivator.activate(window: window)
+            }) ?? false
+            self.settingsModel?.append("activate \(window.appName): \(ok)")
+        }
     }
 
     private func commit() {

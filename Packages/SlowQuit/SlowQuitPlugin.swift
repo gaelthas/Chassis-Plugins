@@ -125,7 +125,11 @@ public final class SlowQuitPlugin: FeaturePlugin {
         sessionThreshold = max(0.5, min(5.0, model.threshold))
 
         if model.showProgressHUD {
-            hud.show(caption: SlowQuitStrings.t("hud.caption"))
+            // Dock2Min 的 HUD 显示「即将被退出的应用图标」，从 bundle 兜底读取。
+            let front = NSWorkspace.shared.frontmostApplication
+            let icon = front?.icon
+                ?? front?.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
+            hud.show(icon: icon)
         }
         model.append(String(format: "hold started (%.1fs)", sessionThreshold))
 

@@ -20,3 +20,4 @@
 "events.clear" = "清空";
 
 "reset" = "重置此插件配置";
+"switcher.noWindows" = "没有可切换的窗口";

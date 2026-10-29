@@ -210,6 +210,7 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
                 windows: limited,
                 appName: appName,
                 appIcon: app.icon,
+                mode: model.mode,
                 showTitles: model.showWindowTitles,
                 anchor: anchor
             )

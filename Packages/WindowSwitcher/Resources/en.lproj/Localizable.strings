@@ -20,3 +20,4 @@
 "events.clear" = "Clear";
 
 "reset" = "Reset this plugin's configuration";
+"switcher.noWindows" = "No Windows";

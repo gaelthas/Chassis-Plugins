@@ -13,24 +13,35 @@ final class SwitcherState {
     var icons: [pid_t: NSImage] = [:]
 }
 
-/// 切换器悬浮层：`.nonactivatingPanel` 保证不抢焦点（否则松开 ⌥ 时前台应用会先变成本应用）。
+/// 面板行为对齐 Dock2Min 的 `AltTabManager.showPanel()`：
+/// 每次显示重建 hosting controller（让入场动画每次都播放）、按内容 `fittingSize` 定尺寸、
+/// 居中于主屏、`.floating` 层级且不参与窗口循环。
 @MainActor
 final class SwitcherPanel {
     let state = SwitcherState()
     private var panel: NSPanel?
 
-    private let panelSize = NSSize(width: 720, height: 230)
-
-    func show(windows: [SwitcherWindow], selected: Int, mode: WindowSwitcherModel.DisplayMode, showTitles: Bool) {
+    func show(
+        windows: [SwitcherWindow],
+        selected: Int,
+        mode: WindowSwitcherModel.DisplayMode,
+        showTitles: Bool,
+        onSelect: @escaping (SwitcherWindow) -> Void
+    ) {
         state.windows = windows
         state.selected = selected
-        state.mode = mode
         state.showTitles = showTitles
+        state.mode = mode
         state.thumbnails = [:]
         state.icons = Self.icons(for: windows)
+
         ensurePanel()
-        positionUnderMouse()
-        panel?.orderFrontRegardless()
+        // 重建内容视图：Dock2Min 用同样的方式保证每次弹出都播放淡入/上移。
+        panel?.contentViewController = NSHostingController(
+            rootView: SwitcherView(state: state, onSelect: onSelect)
+        )
+        position()
+        panel?.makeKeyAndOrderFront(nil)
     }
 
     func update(selected: Int) {
@@ -50,36 +61,36 @@ final class SwitcherPanel {
     private func ensurePanel() {
         guard panel == nil else { return }
 
-        let hosting = NSHostingView(rootView: SwitcherView(state: state))
-        hosting.frame = NSRect(origin: .zero, size: panelSize)
-
         let panel = NSPanel(
-            contentRect: hosting.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
+            contentRect: .zero,
+            styleMask: [.nonactivatingPanel, .borderless],
             backing: .buffered,
             defer: false
         )
-        panel.contentView = hosting
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.isReleasedWhenClosed = false
-        panel.ignoresMouseEvents = true
         self.panel = panel
     }
 
-    private func positionUnderMouse() {
-        guard let panel else { return }
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return }
+    private func position() {
+        guard let panel,
+              let contentView = panel.contentViewController?.view,
+              let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else {
+            return
+        }
+
+        contentView.layout()
+        let fitting = contentView.fittingSize
+        let visible = screen.visibleFrame
         let origin = NSPoint(
-            x: visible.midX - panelSize.width / 2,
-            y: visible.midY - panelSize.height / 2
+            x: visible.origin.x + (visible.width - fitting.width) / 2,
+            y: visible.origin.y + (visible.height - fitting.height) / 2
         )
-        panel.setFrameOrigin(origin)
+        panel.setFrame(NSRect(origin: origin, size: fitting), display: false)
     }
 
     private static func icons(for windows: [SwitcherWindow]) -> [pid_t: NSImage] {
