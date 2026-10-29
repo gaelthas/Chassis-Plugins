@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.slow-quit",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "慢速退出",
+    "en": "Slow Quit"
+  },
+  "summary": {
+    "zh-Hans": "按住 ⌘Q 达到设定时长才退出前台应用",
+    "en": "Hold ⌘Q for a set duration before the frontmost app quits"
+  },
+  "iconSystemName": "hourglass",
+  "requiredCapabilities": [
+    "inputMonitoring"
+  ],
+  "optionalCapabilities": [],
+  "vendor": "gaelthas"
+}

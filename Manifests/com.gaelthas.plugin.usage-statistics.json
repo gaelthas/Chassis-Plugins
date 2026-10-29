@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.usage-statistics",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "使用时长统计",
+    "en": "Usage Statistics"
+  },
+  "summary": {
+    "zh-Hans": "统计各应用的前台活跃时长（本地，无需授权）",
+    "en": "Tracks foreground time per app (local, no permission)"
+  },
+  "iconSystemName": "chart.bar.xaxis",
+  "requiredCapabilities": [],
+  "optionalCapabilities": [],
+  "vendor": "gaelthas"
+}

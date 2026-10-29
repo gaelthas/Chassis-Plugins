@@ -19,7 +19,7 @@ public final class DockActionsPlugin: FeaturePlugin {
         // 点击订阅走鼠标 tap、最小化走 AX，两者都由「辅助功能」门控（§5.4）。
         requiredCapabilities: [.accessibility],
         optionalCapabilities: [],
-        resourceBundle: .module
+        resourceBundle: resourceBundle
     )
 
     private var context: PluginContext?

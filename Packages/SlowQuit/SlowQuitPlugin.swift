@@ -19,7 +19,7 @@ public final class SlowQuitPlugin: FeaturePlugin {
         // 只需要键盘 tap；终止应用走 NSRunningApplication，不需要 AX。
         requiredCapabilities: [.inputMonitoring],
         optionalCapabilities: [],
-        resourceBundle: .module
+        resourceBundle: resourceBundle
     )
 
     private var context: PluginContext?

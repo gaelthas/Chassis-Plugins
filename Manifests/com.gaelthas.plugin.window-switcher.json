@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.window-switcher",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "窗口切换器",
+    "en": "Window Switcher"
+  },
+  "summary": {
+    "zh-Hans": "按住 ⌥ 按 Tab 在所有窗口之间切换",
+    "en": "Hold ⌥ and press Tab to switch between all windows"
+  },
+  "iconSystemName": "rectangle.on.rectangle",
+  "requiredCapabilities": [
+    "inputMonitoring",
+    "accessibility"
+  ],
+  "optionalCapabilities": [
+    "screenCapture"
+  ],
+  "vendor": "gaelthas"
+}

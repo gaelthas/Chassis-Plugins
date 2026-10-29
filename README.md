@@ -36,6 +36,17 @@ swift build
 - 插件之间互不可见（独立 module）
 - target 名用 PascalCase；插件 ID 用反向域名，且发布后不可更改
 
+## 打包成 `.chassisplugin`
+
+```bash
+./Scripts/package-plugins.sh              # 全部 5 个插件
+./Scripts/package-plugins.sh SlowQuit     # 单个
+# 产物：dist/<Name>.chassisplugin，导入基座「插件 → 安装插件…」
+```
+
+清单在 `Manifests/<plugin-id>.json`；插件源码里新增 `Entry.swift` 导出
+`chassis_swift_plugin_entry`，基座据此拿到实现了 `FeaturePlugin` 的实例。
+
 ## 外部插件示例
 
 `Examples/HelloPlugin` 是一个**只依赖 C ABI**（`Packages/PluginABI`）的示例插件：

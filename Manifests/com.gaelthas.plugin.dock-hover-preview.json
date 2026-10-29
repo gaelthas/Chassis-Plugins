@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.dock-hover-preview",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "Dock 悬停预览",
+    "en": "Dock Hover Preview"
+  },
+  "summary": {
+    "zh-Hans": "悬停 Dock 图标时在图标上方弹出该应用的窗口预览",
+    "en": "Hover a Dock icon to preview that app's windows above it"
+  },
+  "iconSystemName": "dock.arrow.up.rectangle",
+  "requiredCapabilities": [
+    "accessibility"
+  ],
+  "optionalCapabilities": [
+    "screenCapture"
+  ],
+  "vendor": "gaelthas"
+}

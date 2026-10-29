@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.dock-actions",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "Dock 动作",
+    "en": "Dock Actions"
+  },
+  "summary": {
+    "zh-Hans": "点击 Dock 图标最小化前台应用；修饰键 + 1~9 切换 Dock 应用",
+    "en": "Click the frontmost app's Dock icon to minimize; modifier + 1–9 jumps between Dock apps"
+  },
+  "iconSystemName": "dock.rectangle",
+  "requiredCapabilities": [
+    "accessibility"
+  ],
+  "optionalCapabilities": [],
+  "vendor": "gaelthas"
+}
