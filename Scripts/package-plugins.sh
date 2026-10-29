@@ -17,6 +17,20 @@ ATOMICS="$HOST_ROOT/.build/arm64-apple-macosx/debug/AtomicsShim.build"
 DIST="$(pwd)/dist"
 ONLY="${1:-}"
 
+# 与基座使用同一个开发证书签名：这样插件与基座 Team 相同，
+# 安装策略（默认只信任同 Team）与 Library Validation 都自然满足，
+# UI 也能据此区分「官方」与「第三方」。
+IDENTITY="${CHASSIS_CODE_SIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+  IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+    | sed -n 's/.*"\(Apple Development: .*\)"/\1/p' | head -1)"
+fi
+if [ -n "$IDENTITY" ]; then
+  echo "签名身份：$IDENTITY"
+else
+  echo "⚠️  未找到 Apple Development 证书，插件将使用 ad-hoc 签名（基座会视为第三方）" >&2
+fi
+
 if [ ! -f "$MODULES/PluginAPI.swiftmodule" ]; then
   echo "== 准备 PluginAPI 模块 =="
   (cd "$HOST_ROOT" && swift build >/dev/null)
@@ -80,7 +94,11 @@ package() {
 </plist>
 PLIST
 
-  codesign --force --sign - --timestamp=none "$bundle" >/dev/null
+  if [ -n "$IDENTITY" ]; then
+    codesign --force --sign "$IDENTITY" --timestamp=none "$bundle" >/dev/null
+  else
+    codesign --force --sign - --timestamp=none "$bundle" >/dev/null
+  fi
   codesign --verify --strict "$bundle"
   echo "   → $bundle"
 }
