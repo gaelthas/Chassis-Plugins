@@ -1,0 +1,35 @@
+"harness.title" = "基座探针";
+"harness.summary" = "验证输入总线、权限门控、快捷键、通知与后台执行的调试用探针（仅调试构建）";
+"harness.inactive" = "插件未激活";
+
+"section.input" = "输入探针";
+"probe.click" = "记录鼠标点击（区分左右键与连击）";
+"probe.key" = "记录键盘事件";
+"probe.pointer" = "记录指针移动（已由基座节流）";
+"probe.consume" = "同步吞掉按键（验证三段式的 syncIntercept）";
+"probe.consume.help" = "打开后该插件订阅的按键会被基座吞掉，其他应用收不到。开关状态通过 AtomicFlag 在 tap 线程读取。";
+
+"section.events" = "事件输出";
+"events.empty" = "暂无事件。";
+"events.clear" = "清空";
+
+"section.hotkey" = "全局快捷键";
+"section.notification" = "通知";
+"probe.notification.burst" = "连发 3 条";
+"probe.notification.single" = "发送 1 条";
+"probe.notification.requestAuth" = "申请通知授权";
+"probe.notification.title" = "探针通知";
+"probe.notification.body" = "这是一条来自探针插件的通知";
+"probe.notification.help" = "连发 3 条只会出现 1 条（同插件 5 秒间隔），其余被丢弃并记入日志。";
+
+"section.capture" = "截图";
+"probe.capture.take" = "截取一个窗口";
+"probe.capture.noPermission" = "缺少屏幕录制授权，已降级为窗口列表：";
+"probe.capture.failed" = "截图失败：";
+
+"section.violation" = "违规对照";
+"violation.skipCancel" = "停用时故意不取消订阅";
+"violation.blockingAX" = "在主线程直接发起 AX 调用";
+"violation.help" = "这两个开关故意违反插件规范：前者验证基座强制清理（关闭后 tap 引用计数仍应归零），后者用于观察主线程同步 AX 造成的 UI 冻结。";
+
+"reset" = "重置探针配置";

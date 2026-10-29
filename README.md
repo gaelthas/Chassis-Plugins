@@ -1,0 +1,37 @@
+# Chassis Plugins
+
+Chassis 基座的插件仓库（独立于基座仓库）。
+
+```
+Chassis/                      ← 基座仓库
+├── Packages/PluginAPI        ← 接口层（独立包，本仓库通过路径依赖引用）
+├── Packages/PluginSupport    ← 可选共享工具（独立包）
+├── Packages/PluginKit        ← 基座机制（插件不可见）
+└── Chassis-Plugins/          ← 本仓库（基座仓库已忽略该目录）
+    ├── docs/Plugin-Development-Guide.md
+    ├── Package.swift
+    └── Packages/
+        └── Harness/          ← 基座探针插件（仅 Debug 注册）
+```
+
+## 构建
+
+本仓库可独立构建（通过路径依赖读取 `../Packages/PluginAPI`、`../Packages/PluginSupport`）：
+
+```bash
+swift build
+```
+
+基座构建时会把本仓库的 target 直接编进应用二进制（见 `../Package.swift`），
+因此新增插件后需要在 `Package.swift` 里声明 target，并在基座 `HostApp/PluginCatalog.swift` 注册一行。
+
+## 约束（编译期强制）
+
+- 插件只能依赖 `PluginAPI`（必需）与 `PluginSupport`（可选），**不得依赖 `PluginKit`**
+- 插件之间互不可见（独立 module）
+- target 名用 PascalCase；插件 ID 用反向域名，且发布后不可更改
+
+## 文档
+
+- 插件开发规范：`docs/Plugin-Development-Guide.md`
+- 基座架构（为什么这样设计）：`../docs/Host-Architecture-Design.md`

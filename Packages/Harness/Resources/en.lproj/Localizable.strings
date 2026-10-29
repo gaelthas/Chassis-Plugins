@@ -1,0 +1,35 @@
+"harness.title" = "Host Harness";
+"harness.summary" = "Debug-only probes for the input bus, permission gating, hot keys, notifications and background execution";
+"harness.inactive" = "Plugin is not active";
+
+"section.input" = "Input probes";
+"probe.click" = "Log mouse clicks (button and click count)";
+"probe.key" = "Log keyboard events";
+"probe.pointer" = "Log pointer movement (throttled by the host)";
+"probe.consume" = "Consume keys synchronously (three-stage syncIntercept)";
+"probe.consume.help" = "When on, keys matched by this plugin are swallowed by the host. The flag is read on the tap thread through AtomicFlag.";
+
+"section.events" = "Event output";
+"events.empty" = "No events yet.";
+"events.clear" = "Clear";
+
+"section.hotkey" = "Global hot key";
+"section.notification" = "Notifications";
+"probe.notification.burst" = "Post 3 in a row";
+"probe.notification.single" = "Post 1";
+"probe.notification.requestAuth" = "Request authorization";
+"probe.notification.title" = "Harness notification";
+"probe.notification.body" = "A notification from the harness plugin";
+"probe.notification.help" = "Only one of the three appears (5s per-plugin interval); the rest are dropped and logged.";
+
+"section.capture" = "Capture";
+"probe.capture.take" = "Capture a window";
+"probe.capture.noPermission" = "Screen recording not granted; degraded to window list:";
+"probe.capture.failed" = "Capture failed:";
+
+"section.violation" = "Violation controls";
+"violation.skipCancel" = "Skip cancelling subscriptions on deactivate";
+"violation.blockingAX" = "Run AX calls on the main thread";
+"violation.help" = "These deliberately violate the plugin guide: the first verifies forced cleanup (tap refcount must still reach zero), the second demonstrates UI freezing caused by synchronous AX on the main thread.";
+
+"reset" = "Reset harness configuration";
