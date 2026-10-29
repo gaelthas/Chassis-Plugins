@@ -46,6 +46,19 @@ swift build
 ./Examples/build-hello.sh     # 产出 Examples/dist/HelloPlugin.chassisplugin（ad-hoc 签名）
 ```
 
+## 插件市场
+
+`Market/` 下是发布工具：把 `Examples/dist` 里的包打 zip、算 sha256、生成索引并用 Ed25519 签名。
+
+```bash
+cd Market
+swift make-index.swift --generate-key .market-key   # 一次性：生成密钥（私钥不入库）
+bash build-market.sh                                # 产出 index.json + packages/*.zip
+python3 -m http.server 8765                         # 本地预览
+```
+
+签名私钥只保存在本地，公钥写进基座 Info.plist 的 `ChassisMarketplacePublicKey`。
+
 ## 文档
 
 - 插件开发规范：`docs/Plugin-Development-Guide.md`
