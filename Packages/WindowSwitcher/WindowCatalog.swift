@@ -1,5 +1,4 @@
 import AppKit
-import ApplicationServices
 import CoreGraphics
 import Foundation
 
@@ -43,17 +42,15 @@ enum ProcessNormalizer {
         }
 
         // 2) helper 位于 X.app/Contents/... 内
-        if let url = app.bundleURL?.standardizedFileURL {
-            let path = url.path
-            if let match = regulars.first(where: { candidate in
-                guard let root = candidate.bundleURL?.standardizedFileURL.path else { return false }
-                return path == root || path.hasPrefix(root + "/")
-            }) {
-                return match
-            }
+        if let path = app.bundleURL?.standardizedFileURL.path,
+           let match = regulars.first(where: { candidate in
+               guard let root = candidate.bundleURL?.standardizedFileURL.path else { return false }
+               return path == root || path.hasPrefix(root + "/")
+           }) {
+            return match
         }
 
-        // 3) 名称前缀：Steam Helper → Steam（最后兜底，可能误配，放在最后）
+        // 3) 名称前缀：Steam Helper → Steam（最后兜底）
         let name = app.localizedName ?? ""
         if !name.isEmpty,
            let match = regulars.first(where: { candidate in
@@ -66,25 +63,17 @@ enum ProcessNormalizer {
     }
 }
 
-/// 窗口枚举。
+/// 窗口枚举：**只用 CGWindowList**，不在这里调用 AX。
 ///
-/// 与 Dock2Min `WindowProvider.getWindows` 对齐的三段式：
-/// 1. AX 枚举每个常规应用的真实窗口（含最小化窗口；可见应用最容易拿到）；
-/// 2. 用 bounds 把 AX 窗口匹配到 CGWindowID；
-/// 3. AX 拿不到（⌘H 隐藏、Steam 只暴露 1×1 假窗口）时退回 CGWindowList：
-///    隐藏应用用全量列表，并且优先用「该应用曾经暴露过的真实窗口」过滤掉
-///    微信浮层、Steam 离屏 helper 这类假窗口；没有记录时只保留最大窗口。
+/// 这是 1.0.0 能用的实现，也是 1.0.1 换成「每个应用都做 AX 枚举」后 Alt-Tab 卡死的教训：
+/// AX 是跨进程 IPC，遇到无响应/异常的应用会长时间阻塞，`performBackground` 是串行队列，
+/// 一堵住面板就永远出不来，表现为「⌥Tab 没反应」。AX 只在**激活那一个窗口**时使用。
 ///
-/// 整段调用放进 `performBackground`（AX 是跨进程 IPC）。
+/// ⌘H 隐藏的应用：它的窗口不在屏上列表里，但仍在全量列表里，因此按 Dock2Min 的规则处理——
+/// 优先用「该应用曾暴露过的真实窗口」过滤微信浮层/Steam 离屏窗口，没学到时只保留最大窗口。
 enum WindowCatalog {
-    /// 每个应用最近一次通过 AX 确认过的真实窗口。隐藏应用的 CG 回退用它过滤假窗口。
     private static let stateLock = NSLock()
     nonisolated(unsafe) private static var knownRealWindows: [pid_t: Set<CGWindowID>] = [:]
-
-    private struct AXWindowSnapshot {
-        let bounds: CGRect
-        let title: String
-    }
 
     static func windows(excludingPID ownPID: pid_t) -> [SwitcherWindow] {
         let all = windowList([.optionAll, .excludeDesktopElements])
@@ -105,40 +94,26 @@ enum WindowCatalog {
         for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
             let pid = app.processIdentifier
             guard pid != ownPID, pid != selfPID else { continue }
+
             let appName = app.localizedName ?? "Unknown"
             let owned = ownedProcessIDs(app: app, helperOwner: helperOwner)
 
-            // 快路径：屏上窗口直接取 CGWindowList（毫秒级）。
-            // AX 只对「没有屏上窗口」的应用使用（⌘H 隐藏、窗口全部最小化）；
-            // 否则每个应用一次 AX IPC 会让 ⌥Tab 明显变慢，甚至错过松开 ⌥ 的时机。
-            var items = visibleWindows(
-                in: onScreen,
-                app: app,
-                appName: appName,
-                owned: owned
-            )
-            if items.isEmpty {
-                items = matchedAXWindows(
-                    app: app,
-                    appName: appName,
-                    pool: all,
-                    onScreenIDs: onScreenIDs,
-                    owned: owned
-                )
+            var items: [SwitcherWindow] = []
+            if app.isHidden {
+                // ⌘H：只能用全量列表，再按「已知真实窗口」过滤。
+                items = compact(all, app: app, appName: appName, owned: owned, onScreenIDs: onScreenIDs, minSize: 100)
+                items = restrictToRealWindows(items, pid: pid)
+            } else {
+                items = compact(onScreen, app: app, appName: appName, owned: owned, onScreenIDs: onScreenIDs, minSize: 60)
+                if items.isEmpty {
+                    // 窗口全部最小化：同样退回全量列表。
+                    items = compact(all, app: app, appName: appName, owned: owned, onScreenIDs: onScreenIDs, minSize: 100)
+                    items = restrictToRealWindows(items, pid: pid)
+                }
             }
-            if items.isEmpty {
-                items = fallbackWindows(
-                    app: app,
-                    appName: appName,
-                    all: all,
-                    onScreen: onScreen,
-                    onScreenIDs: onScreenIDs,
-                    owned: owned
-                )
-            }
-            if !items.isEmpty {
-                recordKnownWindows(pid: pid, ids: items.map(\.windowID))
-            }
+
+            guard !items.isEmpty else { continue }
+            recordKnownWindows(pid: pid, ids: items.map(\.windowID))
             for item in items where seen.insert(item.windowID).inserted {
                 result.append(item)
             }
@@ -148,168 +123,50 @@ enum WindowCatalog {
         return result
     }
 
-    // MARK: - 快路径
+    // MARK: - 过滤
 
-    /// 屏上窗口：CG 列表本身就是前到后的 z 序，不需要 AX。
-    private static func visibleWindows(
-        in pool: [[String: Any]],
+    private static func compact(
+        _ pool: [[String: Any]],
         app: NSRunningApplication,
         appName: String,
-        owned: Set<pid_t>
+        owned: Set<pid_t>,
+        onScreenIDs: Set<CGWindowID>,
+        minSize: CGFloat
     ) -> [SwitcherWindow] {
         pool.compactMap { entry in
             guard let owner = ownerPID(of: entry), owned.contains(owner),
                   let id = windowID(of: entry), layer(of: entry) == 0,
-                  let bounds = bounds(of: entry), bounds.width >= 60, bounds.height >= 60 else {
+                  let bounds = bounds(of: entry),
+                  bounds.width >= minSize, bounds.height >= minSize else {
                 return nil
             }
             let alpha = (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1
             guard alpha >= 0.05 else { return nil }
+
             return SwitcherWindow(
                 windowID: id,
                 pid: app.processIdentifier,
                 appName: appName,
                 title: entry[kCGWindowName as String] as? String ?? "",
                 bounds: bounds,
-                isOnScreen: true
+                isOnScreen: onScreenIDs.contains(id)
             )
         }
     }
 
-    // MARK: - AX 路径
-
-    private static func matchedAXWindows(
-        app: NSRunningApplication,
-        appName: String,
-        pool: [[String: Any]],
-        onScreenIDs: Set<CGWindowID>,
-        owned: Set<pid_t>
-    ) -> [SwitcherWindow] {
-        let snapshots = axSnapshots(pid: app.processIdentifier)
-        guard !snapshots.isEmpty else { return [] }
-
-        var items: [SwitcherWindow] = []
-        var used = Set<CGWindowID>()
-
-        for snapshot in snapshots {
-            let match = pool.first { entry in
-                guard let owner = ownerPID(of: entry), owned.contains(owner),
-                      let id = windowID(of: entry), !used.contains(id),
-                      layer(of: entry) == 0,
-                      let bounds = bounds(of: entry),
-                      // AX 与 CG 的坐标都相对主屏左上角，5pt 容差足够区分同应用的窗口。
-                      abs(bounds.minX - snapshot.bounds.minX) < 5,
-                      abs(bounds.minY - snapshot.bounds.minY) < 5 else {
-                    return false
-                }
-                return true
-            }
-            guard let match, let id = windowID(of: match) else { continue }
-
-            used.insert(id)
-            let cgTitle = match[kCGWindowName as String] as? String ?? ""
-            items.append(
-                SwitcherWindow(
-                    windowID: id,
-                    pid: app.processIdentifier,
-                    appName: appName,
-                    title: snapshot.title.isEmpty ? cgTitle : snapshot.title,
-                    bounds: snapshot.bounds,
-                    isOnScreen: onScreenIDs.contains(id)
-                )
-            )
-        }
-        return items
-    }
-
-    /// AX 枚举真实窗口：排除对话框/浮动面板，跳过 1×1 假窗口（Steam 会停一个在屏幕外）。
-    private static func axSnapshots(pid: pid_t) -> [AXWindowSnapshot] {
-        let axApp = AXUIElementCreateApplication(pid)
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,
-              let windows = value as? [AXUIElement] else {
-            return []
-        }
-
-        var result: [AXWindowSnapshot] = []
-        result.reserveCapacity(windows.count)
-
-        for window in windows {
-            guard let role = stringAttribute(window, kAXRoleAttribute), role == kAXWindowRole else { continue }
-
-            let subrole = stringAttribute(window, kAXSubroleAttribute)
-            if subrole == kAXSystemDialogSubrole || subrole == kAXFloatingWindowSubrole { continue }
-
-            var position = CGPoint.zero
-            var size = CGSize.zero
-            if let positionValue = pointAttribute(window, kAXPositionAttribute) { position = positionValue }
-            if let sizeValue = sizeAttribute(window, kAXSizeAttribute) { size = sizeValue }
-
-            // 1×1 占位窗口：Steam 的真实窗口由 helper 渲染，AX 只给这个。
-            guard size.width >= 2, size.height >= 2 else { continue }
-
-            result.append(
-                AXWindowSnapshot(
-                    bounds: CGRect(origin: position, size: size),
-                    title: stringAttribute(window, kAXTitleAttribute) ?? ""
-                )
-            )
-        }
-        return result
-    }
-
-    // MARK: - CGWindowList 回退
-
-    private static func fallbackWindows(
-        app: NSRunningApplication,
-        appName: String,
-        all: [[String: Any]],
-        onScreen: [[String: Any]],
-        onScreenIDs: Set<CGWindowID>,
-        owned: Set<pid_t>
-    ) -> [SwitcherWindow] {
-        func poolItems(_ pool: [[String: Any]]) -> [SwitcherWindow] {
-            pool.compactMap { entry in
-                guard let owner = ownerPID(of: entry), owned.contains(owner),
-                      let id = windowID(of: entry), layer(of: entry) == 0,
-                      let bounds = bounds(of: entry), bounds.width >= 100, bounds.height >= 100 else {
-                    return nil
-                }
-                let alpha = (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1
-                guard alpha >= 0.05 else { return nil }
-                return SwitcherWindow(
-                    windowID: id,
-                    pid: app.processIdentifier,
-                    appName: appName,
-                    title: entry[kCGWindowName as String] as? String ?? "",
-                    bounds: bounds,
-                    isOnScreen: onScreenIDs.contains(id)
-                )
-            }
-        }
-
-        // 可见应用只用屏上窗口：这样微信的浮层、Steam 的离屏 helper 不会混进来。
-        // 隐藏应用（⌘H）根本没有屏上窗口，只能用全量列表，再靠「曾经的真实窗口」过滤。
-        var items = poolItems(app.isHidden ? all : onScreen)
-        var usedFullList = app.isHidden
-
-        if items.isEmpty {
-            items = poolItems(all)
-            usedFullList = true
-        }
-
-        if usedFullList, !items.isEmpty {
-            let known = knownWindowIDs(pid: app.processIdentifier)
+    /// 全量列表里混着 staging 面板（微信浮层、Steam 离屏 helper）。
+    /// 已知真实窗口 > 最大窗口，两级兜底与 Dock2Min 一致。
+    private static func restrictToRealWindows(_ items: [SwitcherWindow], pid: pid_t) -> [SwitcherWindow] {
+        guard !items.isEmpty else { return [] }
+        let known = knownWindowIDs(pid: pid)
+        if !known.isEmpty {
             let matched = items.filter { known.contains($0.windowID) }
-            if !matched.isEmpty {
-                items = matched
-            } else if let largest = items.max(by: { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }) {
-                // 还没学到真实窗口集合：只暴露最大窗口，避免把 staging 面板列出来。
-                items = [largest]
-            }
+            if !matched.isEmpty { return matched }
         }
-
-        return items
+        if let largest = items.max(by: { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }) {
+            return [largest]
+        }
+        return []
     }
 
     // MARK: - 归属与记录
@@ -362,31 +219,5 @@ enum WindowCatalog {
     private static func bounds(of entry: [String: Any]) -> CGRect? {
         (entry[kCGWindowBounds as String] as? NSDictionary)
             .flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) }
-    }
-
-    // MARK: - AX 字段读取
-
-    private static func stringAttribute(_ element: AXUIElement, _ attribute: String) -> String? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
-        return value as? String
-    }
-
-    private static func pointAttribute(_ element: AXUIElement, _ attribute: String) -> CGPoint? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value else { return nil }
-        let axValue = value as! AXValue
-        var point = CGPoint.zero
-        return AXValueGetValue(axValue, .cgPoint, &point) ? point : nil
-    }
-
-    private static func sizeAttribute(_ element: AXUIElement, _ attribute: String) -> CGSize? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value else { return nil }
-        let axValue = value as! AXValue
-        var size = CGSize.zero
-        return AXValueGetValue(axValue, .cgSize, &size) ? size : nil
     }
 }

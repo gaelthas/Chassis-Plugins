@@ -33,6 +33,9 @@ enum WindowActivator {
 
     private static func raiseIfFound(window: SwitcherWindow) -> Bool {
         let axApp = AXUIElementCreateApplication(window.pid)
+        // AX 是跨进程 IPC：目标应用无响应时默认会阻塞数秒。枚举已经不用 AX 了，
+        // 这里只做一次短超时的置顶尝试，失败就退回「只激活应用」。
+        AXUIElementSetMessagingTimeout(axApp, 0.35)
         guard let axWindows = windows(of: axApp) else { return false }
 
         // 优先 AXWindowNumber（少数应用不提供），其次 bounds，最后标题。

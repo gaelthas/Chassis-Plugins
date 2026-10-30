@@ -84,8 +84,20 @@ final class SwitcherPanel {
         }
 
         contentView.layout()
-        let fitting = contentView.fittingSize
+        var fitting = contentView.fittingSize
         let visible = screen.visibleFrame
+
+        // fittingSize 在极端情况下可能是 0（视图还没完成布局）：给一个可用下限，
+        // 否则面板是 0×0，看起来就是「⌥Tab 没有任何反应」。
+        fitting.width = max(fitting.width, 320)
+        fitting.height = max(fitting.height, 160)
+
+        // 窗口很多时卡片会超过屏幕高度：夹在可视区域内，保证标题栏不出屏。
+        let maxHeight = visible.height - 16
+        if fitting.height > maxHeight {
+            fitting.height = maxHeight
+        }
+
         let origin = NSPoint(
             x: visible.origin.x + (visible.width - fitting.width) / 2,
             y: visible.origin.y + (visible.height - fitting.height) / 2
