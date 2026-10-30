@@ -6,7 +6,5 @@ DerivedData/
 xcuserdata/
 Examples/dist/
 Examples/*/.build/
-Market/index.json
-Market/packages/
 Market/.market-key
 dist/

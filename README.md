@@ -62,10 +62,18 @@ swift build
 `Market/` 下是发布工具：把 `Examples/dist` 里的包打 zip、算 sha256、生成索引并用 Ed25519 签名。
 
 ```bash
+./Scripts/publish.sh                          # 全部插件：打包 + 重建签名索引
+./Scripts/publish.sh --bump patch SlowQuit    # 只发布 SlowQuit（补丁号 +1）
+```
+
+`Manifests/<id>.json` 是该插件的版本来源；`Market/packages/<id>-<version>.zip` 是发布产物。
+索引里每个插件只有一条记录，所以「只更新一个插件」时只改这一条，其它沿用旧包。
+
+密钥：
+
+```bash
 cd Market
-swift make-index.swift --generate-key .market-key   # 一次性：生成密钥（私钥不入库）
-bash build-market.sh                                # 产出 index.json + packages/*.zip
-python3 -m http.server 8765                         # 本地预览
+swift make-index.swift --generate-key .market-key   # 一次性；私钥不入库，务必自行备份
 ```
 
 签名私钥只保存在本地，公钥写进基座 Info.plist 的 `ChassisMarketplacePublicKey`。
