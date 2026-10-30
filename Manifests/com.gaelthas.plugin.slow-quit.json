@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "com.gaelthas.plugin.slow-quit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minHostVersion": "1.0.0",
   "apiVersion": 1,
   "title": {

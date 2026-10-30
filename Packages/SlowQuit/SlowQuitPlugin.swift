@@ -125,10 +125,11 @@ public final class SlowQuitPlugin: FeaturePlugin {
         sessionThreshold = max(0.5, min(5.0, model.threshold))
 
         if model.showProgressHUD {
-            // Dock2Min 的 HUD 显示「即将被退出的应用图标」，从 bundle 兜底读取。
-            let front = NSWorkspace.shared.frontmostApplication
-            let icon = front?.icon
-                ?? front?.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
+            // Dock2Min 的 HUD 显示「即将被退出的应用图标」，从 bundle 兜底读取；
+            // 前台可能是 helper，先归一成真正会被退出的应用。
+            let target = SlowQuitTargetResolver.resolve(frontmost: NSWorkspace.shared.frontmostApplication)
+            let icon = target?.icon
+                ?? target?.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
             hud.show(icon: icon)
         }
         model.append(String(format: "hold started (%.1fs)", sessionThreshold))
@@ -157,16 +158,17 @@ public final class SlowQuitPlugin: FeaturePlugin {
 
     private func commitQuit() {
         guard let model = settingsModel else { return }
-        let front = NSWorkspace.shared.frontmostApplication
+        // Steam 之类的应用由 helper 占住 frontmost：归一后再退，否则只会杀掉 helper。
+        let target = SlowQuitTargetResolver.resolve(frontmost: NSWorkspace.shared.frontmostApplication)
         endSession()
 
-        guard let front, front.activationPolicy == .regular, front.bundleIdentifier != Bundle.main.bundleIdentifier else {
-            // 前台可能是 helper 子进程或基座自己：都不该被 terminate。
-            model.append("skip quit: frontmost is not a regular app")
+        guard let target, target.bundleIdentifier != Bundle.main.bundleIdentifier else {
+            // 前台是基座自己：绝不 terminate 自己。
+            model.append("skip quit: frontmost is this app")
             return
         }
-        let name = front.localizedName ?? "-"
-        let terminated = front.terminate()
+        let name = target.localizedName ?? "-"
+        let terminated = target.terminate()
         model.append("quit \(name): \(terminated)")
     }
 

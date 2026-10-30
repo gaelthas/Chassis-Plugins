@@ -280,7 +280,9 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
             return
         }
 
-        let targets = Array(windows.prefix(max(1, model.maxThumbnails)))
+        // 屏上窗口优先：最小化/隐藏应用的窗口没有 backing surface，抓取多半失败。
+        let ordered = windows.filter(\.isOnScreen) + windows.filter { !$0.isOnScreen }
+        let targets = Array(ordered.prefix(max(1, model.maxThumbnails)))
 
         // 先贴缓存：同一批窗口再次打开时无需重新截图。
         for window in targets {
