@@ -11,7 +11,7 @@ import SwiftUI
 public final class SlowQuitPlugin: FeaturePlugin {
     public static let manifest = PluginManifest(
         id: "com.gaelthas.plugin.slow-quit",
-        version: "1.0.0",
+        version: "1.0.3",
         minHostVersion: "1.0.0",
         title: "slowQuit.title",
         summary: "slowQuit.summary",
@@ -43,6 +43,15 @@ public final class SlowQuitPlugin: FeaturePlugin {
     /// ⌘Q 的物理键位。
     private static let qKeyCode: Int64 = 0x0C
 
+    /// 只有「裸 ⌘Q」归本插件管：⌃⌘Q 是系统「锁定屏幕」、⇧⌘Q 是注销、
+    /// ⌥⌘⇧Q 是强制注销。这些带额外修饰键的组合必须原样放行，
+    /// 否则系统快捷键会被同步拦截直接吃掉（表现为锁屏按了没反应）。
+    @inline(__always)
+    nonisolated private static func isExclusiveCommandQ(_ flags: CGEventFlags) -> Bool {
+        let others: CGEventFlags = [.maskControl, .maskAlternate, .maskShift]
+        return flags.contains(.maskCommand) && flags.intersection(others).isEmpty
+    }
+
     public init() {}
 
     // MARK: - 生命周期
@@ -56,9 +65,12 @@ public final class SlowQuitPlugin: FeaturePlugin {
 
         keySub = context.inputBus.subscribeToKey(
             KeyFilter(keyCodes: [Self.qKeyCode], requiredFlags: .maskCommand),
-            syncIntercept: { [flag = model.consumeFlag] _ in
-                // tap 线程：只读原子标量。松开也要吞，避免漏给系统。
-                flag.value ? .consume : .passthrough
+            syncIntercept: { [flag = model.consumeFlag] event in
+                // tap 线程：只读原子标量 + 位运算，不分配、不加锁。
+                // 带 ⌃/⌥/⇧ 的组合（⌃⌘Q 锁屏、⇧⌘Q 注销）一律放行，不能顺手吞掉。
+                guard flag.value, Self.isExclusiveCommandQ(event.flags) else { return .passthrough }
+                // 松开也要吞，避免漏给系统。
+                return .consume
             },
             handler: { [weak self] event in
                 self?.handle(event)
@@ -128,11 +140,19 @@ public final class SlowQuitPlugin: FeaturePlugin {
         case .flagsChanged:
             if !event.flags.contains(.maskCommand) {
                 latched.value = false
+                // 先松 ⌘ 再松 Q：Q 的 keyUp 因不含 command 不会送达，这里必须收尾，
+                // 否则计时会继续走完并误退应用。
+                cancelSession(reason: "command released")
             }
         case .keyDown:
             // 闩锁期间（刚退出、键还没松）不开始新的倒计时。
             guard !latched.value else { return }
             guard !event.isRepeat else { return }
+            // 带 ⌃/⌥/⇧ 的组合（⌃⌘Q 锁屏等）已在拦截阶段放行，这里也不该起计时。
+            guard Self.isExclusiveCommandQ(event.flags) else {
+                cancelSession(reason: "modifier combo")
+                return
+            }
             startSession()
         case .keyUp:
             latched.value = false
@@ -187,9 +207,15 @@ public final class SlowQuitPlugin: FeaturePlugin {
         latched.value = true
         endSession()
 
-        guard let target, target.bundleIdentifier != Bundle.main.bundleIdentifier else {
-            // 前台是基座自己：绝不 terminate 自己。
-            model.append("skip quit: frontmost is this app")
+        guard let target else {
+            model.append("skip quit: no frontmost app")
+            return
+        }
+        // 前台是基座自己：同样按长按退出处理。插件动态库一旦加载就不会卸载，
+        // 只有真正退出应用才能让新装的版本生效，所以这里不能吞了 ⌘Q 却什么都不做。
+        if target.bundleIdentifier == Bundle.main.bundleIdentifier {
+            model.append("quit host app")
+            NSApplication.shared.terminate(nil)
             return
         }
         let name = target.localizedName ?? "-"

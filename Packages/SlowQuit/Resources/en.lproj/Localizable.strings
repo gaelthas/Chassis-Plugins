@@ -6,7 +6,7 @@
 "quit.enabled" = "Enable hold-⌘Q to quit";
 "quit.showHUD" = "Show a progress ring while holding";
 "quit.threshold" = "Hold duration";
-"quit.help" = "When enabled this plugin takes over ⌘Q: a short press does nothing, holding until the ring completes quits the app. Switching apps or losing the input source cancels the timer.";
+"quit.help" = "When enabled only plain ⌘Q is taken over: a short press does nothing, holding until the ring completes quits the app. Combinations with ⌃, ⌥ or ⇧ (e.g. ⌃⌘Q to lock the screen) are left to the system. Switching apps or losing the input source cancels the timer.";
 
 "hud.caption" = "Keep holding to quit";
 
