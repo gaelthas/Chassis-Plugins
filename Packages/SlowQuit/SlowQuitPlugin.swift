@@ -34,6 +34,12 @@ public final class SlowQuitPlugin: FeaturePlugin {
     private var sessionThreshold: Double = 0
     private var tickTask: Task<Void, Never>?
 
+    /// 退出刚发生、⌘Q 还按着时的闩锁（Dock2Min 同款）：
+    /// 系统会继续发来自动重复的 keyDown，不锁住的话会对着新前台应用再走一次倒计时。
+    /// 只有 Q 或 ⌘ 抬起后才解锁。
+    private let latched = AtomicFlag(false)
+    private var modifierSub: Subscription?
+
     /// ⌘Q 的物理键位。
     private static let qKeyCode: Int64 = 0x0C
 
@@ -59,6 +65,16 @@ public final class SlowQuitPlugin: FeaturePlugin {
             }
         )
 
+        // 单独订阅 ⌘ 的 flagsChanged：Q 的过滤器要求带 command，⌘ 先抬起时收不到。
+        modifierSub = context.inputBus.subscribeToKey(
+            KeyFilter(keyCodes: [0x37, 0x36]),
+            syncIntercept: nil,
+            handler: { [weak self] event in
+                guard event.kind == .flagsChanged, !event.flags.contains(.maskCommand) else { return }
+                self?.latched.value = false
+            }
+        )
+
         interruptionSub = context.inputBus.subscribeToInterruptions { [weak self] interruption in
             guard let self, interruption.source == .keyboard else { return }
             self.cancelSession(reason: "input interrupted")
@@ -77,8 +93,10 @@ public final class SlowQuitPlugin: FeaturePlugin {
 
     public func deactivate() {
         keySub?.cancel()
+        modifierSub?.cancel()
         interruptionSub?.cancel()
         keySub = nil
+        modifierSub = nil
         interruptionSub = nil
 
         if let workspaceObserver {
@@ -108,11 +126,16 @@ public final class SlowQuitPlugin: FeaturePlugin {
 
         switch event.kind {
         case .flagsChanged:
-            break
+            if !event.flags.contains(.maskCommand) {
+                latched.value = false
+            }
         case .keyDown:
+            // 闩锁期间（刚退出、键还没松）不开始新的倒计时。
+            guard !latched.value else { return }
             guard !event.isRepeat else { return }
             startSession()
         case .keyUp:
+            latched.value = false
             releaseSession()
         }
     }
@@ -160,6 +183,8 @@ public final class SlowQuitPlugin: FeaturePlugin {
         guard let model = settingsModel else { return }
         // Steam 之类的应用由 helper 占住 frontmost：归一后再退，否则只会杀掉 helper。
         let target = SlowQuitTargetResolver.resolve(frontmost: NSWorkspace.shared.frontmostApplication)
+        // 先上锁再退出：terminate 之后仍会有 Q 的自动重复 keyDown 涌进来。
+        latched.value = true
         endSession()
 
         guard let target, target.bundleIdentifier != Bundle.main.bundleIdentifier else {

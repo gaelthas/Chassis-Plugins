@@ -188,13 +188,10 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
                 WindowCatalog.windows(excludingPID: ownPID)
             }) ?? []
 
-            guard let self else { return }
-            guard !list.isEmpty else {
-                self.close(reason: "no windows")
-                model.append("no windows to switch")
-                return
-            }
+            guard let self, self.isOpen else { return }
 
+            // 枚举为空也把面板显示出来（Dock2Min 的「No Windows」空态）：
+            // 否则用户只会看到「按了没反应」，分不清是插件没生效还是真的没有窗口。
             self.windows = Self.sorted(list, by: knownOrder)
             self.selected = 0
             self.panel.show(
@@ -208,6 +205,8 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
                 }
             )
             model.append("opened with \(self.windows.count) window(s)")
+            guard !self.windows.isEmpty else { return }
+
             let session = self.thumbnails.beginSession()
             self.loadThumbnailsIfNeeded(session: session)
         }

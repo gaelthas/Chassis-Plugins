@@ -108,13 +108,24 @@ enum WindowCatalog {
             let appName = app.localizedName ?? "Unknown"
             let owned = ownedProcessIDs(app: app, helperOwner: helperOwner)
 
-            var items = matchedAXWindows(
+            // 快路径：屏上窗口直接取 CGWindowList（毫秒级）。
+            // AX 只对「没有屏上窗口」的应用使用（⌘H 隐藏、窗口全部最小化）；
+            // 否则每个应用一次 AX IPC 会让 ⌥Tab 明显变慢，甚至错过松开 ⌥ 的时机。
+            var items = visibleWindows(
+                in: onScreen,
                 app: app,
                 appName: appName,
-                pool: all,
-                onScreenIDs: onScreenIDs,
                 owned: owned
             )
+            if items.isEmpty {
+                items = matchedAXWindows(
+                    app: app,
+                    appName: appName,
+                    pool: all,
+                    onScreenIDs: onScreenIDs,
+                    owned: owned
+                )
+            }
             if items.isEmpty {
                 items = fallbackWindows(
                     app: app,
@@ -135,6 +146,34 @@ enum WindowCatalog {
 
         pruneKnownWindows()
         return result
+    }
+
+    // MARK: - 快路径
+
+    /// 屏上窗口：CG 列表本身就是前到后的 z 序，不需要 AX。
+    private static func visibleWindows(
+        in pool: [[String: Any]],
+        app: NSRunningApplication,
+        appName: String,
+        owned: Set<pid_t>
+    ) -> [SwitcherWindow] {
+        pool.compactMap { entry in
+            guard let owner = ownerPID(of: entry), owned.contains(owner),
+                  let id = windowID(of: entry), layer(of: entry) == 0,
+                  let bounds = bounds(of: entry), bounds.width >= 60, bounds.height >= 60 else {
+                return nil
+            }
+            let alpha = (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1
+            guard alpha >= 0.05 else { return nil }
+            return SwitcherWindow(
+                windowID: id,
+                pid: app.processIdentifier,
+                appName: appName,
+                title: entry[kCGWindowName as String] as? String ?? "",
+                bounds: bounds,
+                isOnScreen: true
+            )
+        }
     }
 
     // MARK: - AX 路径
