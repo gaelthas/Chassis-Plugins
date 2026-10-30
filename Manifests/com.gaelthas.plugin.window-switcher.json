@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "id": "com.gaelthas.plugin.window-switcher",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minHostVersion": "1.0.0",
   "apiVersion": 1,
   "title": {
@@ -14,10 +14,10 @@
   },
   "iconSystemName": "rectangle.on.rectangle",
   "requiredCapabilities": [
-    "inputMonitoring",
-    "accessibility"
+    "inputMonitoring"
   ],
   "optionalCapabilities": [
+    "accessibility",
     "screenCapture"
   ],
   "vendor": "gaelthas"

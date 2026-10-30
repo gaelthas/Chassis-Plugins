@@ -16,9 +16,12 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
         title: "windowSwitcher.title",
         summary: "windowSwitcher.summary",
         iconSystemName: "rectangle.on.rectangle",
-        // 键盘 tap → 输入监控；窗口枚举与 AX 置顶 → 辅助功能。
-        requiredCapabilities: [.inputMonitoring, .accessibility],
-        optionalCapabilities: [.screenCapture],
+        // 键盘 tap → 输入监控（必需）。
+        // 辅助功能只影响「精确置顶到某个窗口 / 枚举隐藏与最小化窗口」；
+        // 屏上窗口走 CGWindowList，没有辅助功能也能切换，因此改为可选，
+        // 避免仅因缺辅助功能就整个插件不可用（表现为 ⌥Tab 没反应）。
+        requiredCapabilities: [.inputMonitoring],
+        optionalCapabilities: [.accessibility, .screenCapture],
         resourceBundle: resourceBundle
     )
 
