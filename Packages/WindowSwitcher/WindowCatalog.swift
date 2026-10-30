@@ -77,12 +77,6 @@ enum ProcessNormalizer {
 ///
 /// 整段调用放进 `performBackground`（AX 是跨进程 IPC）。
 enum WindowCatalog {
-    /// 系统 UI 进程，不应出现在切换列表里。
-    private static let excludedOwners: Set<String> = [
-        "Dock", "Window Server", "Control Center", "Notification Center", "Spotlight",
-        "TextInputMenuAgent", "Universal Control",
-    ]
-
     /// 每个应用最近一次通过 AX 确认过的真实窗口。隐藏应用的 CG 回退用它过滤假窗口。
     private static let stateLock = NSLock()
     nonisolated(unsafe) private static var knownRealWindows: [pid_t: Set<CGWindowID>] = [:]
