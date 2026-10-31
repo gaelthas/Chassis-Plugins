@@ -173,8 +173,10 @@ struct KeyboardStatisticsSettingsView: View {
         HStack(spacing: 8) {
             Text(verbatim: KeyboardLayout.label(for: code))
                 .font(.system(size: 11, weight: .medium))
-                .frame(width: 42, alignment: .leading)
                 .lineLimit(1)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 4))
             ProgressView(value: Double(count), total: Double(max(1, snapshot.maxCount)))
                 .progressViewStyle(.linear)
             Text(verbatim: String(format: KBStrings.t("count.format"), count))
@@ -243,7 +245,7 @@ struct DailyBarChart: View {
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(point.value > 0 ? Color.accentColor.opacity(0.85) : Color.primary.opacity(0.08))
+                .fill(barFill(active: point.value > 0))
                 .frame(height: height)
         }
         .frame(maxWidth: .infinity)
@@ -252,5 +254,17 @@ struct DailyBarChart: View {
             point.label,
             point.value
         ))
+    }
+
+    private func barFill(active: Bool) -> AnyShapeStyle {
+        if active {
+            AnyShapeStyle(LinearGradient(
+                colors: [.accentColor, .accentColor.opacity(0.55)],
+                startPoint: .top,
+                endPoint: .bottom
+            ))
+        } else {
+            AnyShapeStyle(Color.primary.opacity(0.08))
+        }
     }
 }

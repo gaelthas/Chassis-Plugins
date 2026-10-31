@@ -14,7 +14,7 @@ struct DockHoverPreviewSettingsView: View {
 
     var body: some View {
         Form {
-            Section(DockHoverStrings.t("section.behavior")) {
+            Section {
                 Toggle(DockHoverStrings.t("hover.enabled"), isOn: $model.enabled)
 
                 Picker(DockHoverStrings.t("hover.mode"), selection: $model.mode) {
@@ -54,43 +54,17 @@ struct DockHoverPreviewSettingsView: View {
                     )
                 }
 
-                Text(DockHoverStrings.t("hover.help"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 if model.mode == .thumbnails, !plugin.screenCaptureGranted {
-                    HStack(spacing: 8) {
-                        Text(DockHoverStrings.t("hover.permissionNeeded"))
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                        Button(DockHoverStrings.t("hover.requestPermission")) {
-                            plugin.requestScreenCapture()
-                        }
-                    }
+                    permissionNotice
                 }
+            } header: {
+                Text(DockHoverStrings.t("section.behavior"))
+            } footer: {
+                Text(DockHoverStrings.t("hover.help"))
             }
 
             Section(DockHoverStrings.t("section.events")) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        if model.events.isEmpty {
-                            Text(DockHoverStrings.t("events.empty"))
-                                .foregroundStyle(.secondary)
-                        }
-                        ForEach(Array(model.events.enumerated()), id: \.offset) { _, line in
-                            Text(verbatim: line)
-                                .font(.caption.monospaced())
-                                .textSelection(.enabled)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(height: 90)
-
-                Button(DockHoverStrings.t("events.clear")) {
-                    model.clearEvents()
-                }
+                eventLog
             }
 
             Section {
@@ -100,5 +74,70 @@ struct DockHoverPreviewSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// 事件日志：浅底等宽日志框，新事件自动滚到底部。
+    private var eventLog: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Spacer()
+                Button {
+                    model.clearEvents()
+                } label: {
+                    Label(DockHoverStrings.t("events.clear"), systemImage: "trash")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .disabled(model.events.isEmpty)
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if model.events.isEmpty {
+                            Text(DockHoverStrings.t("events.empty"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 72)
+                        } else {
+                            ForEach(model.events.indices, id: \.self) { index in
+                                Text(verbatim: model.events[index])
+                                    .font(.caption.monospaced())
+                                    .textSelection(.enabled)
+                                    .id(index)
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 6))
+                .frame(height: 104)
+                .onChange(of: model.events.count) { _, _ in
+                    if let last = model.events.indices.last {
+                        proxy.scrollTo(last, anchor: .bottom)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 缺「屏幕录制」权限时的提示条：图标 + 说明 + 申请按钮。
+    private var permissionNotice: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(DockHoverStrings.t("hover.permissionNeeded"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Button(DockHoverStrings.t("hover.requestPermission")) {
+                plugin.requestScreenCapture()
+            }
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
     }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import PluginAPI
 import SwiftUI
 
@@ -68,10 +69,8 @@ struct UsageStatisticsSettingsView: View {
                 Button(UsageStrings.t("usage.reset"), role: .destructive) {
                     model.resetData()
                 }
+            } footer: {
                 Text(UsageStrings.t("usage.note \(model.daysRecorded)"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .formStyle(.grouped)
@@ -82,6 +81,11 @@ struct UsageStatisticsSettingsView: View {
 
     private func usageRow(_ usage: AppUsage, maxSeconds: Double) -> some View {
         HStack(spacing: 8) {
+            if let icon = appIcon(for: usage.bundleID) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 18, height: 18)
+            }
             Text(verbatim: usage.name)
                 .frame(width: 130, alignment: .leading)
                 .lineLimit(1)
@@ -92,5 +96,16 @@ struct UsageStatisticsSettingsView: View {
                 .frame(width: 72, alignment: .trailing)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// 优先取运行中实例的图标；应用没在跑时退回 LaunchServices 的应用图标。
+    private func appIcon(for bundleID: String) -> NSImage? {
+        if let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+            return running.icon
+        }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            return NSWorkspace.shared.icon(forFile: url.path)
+        }
+        return nil
     }
 }
