@@ -5,14 +5,14 @@ import SwiftUI
 
 /// 悬停 Dock 图标时，在图标上方弹出该应用的窗口预览网格。
 ///
-/// 与 Dock2Min 一致的细节：2pt 抖动阈值、悬停延时、0.3s 离开延时、缩略图治理。
-/// 已知边界：无法与「窗口切换器」插件共享会话状态（插件互不可见），
-/// 若两者同时打开，⌥Tab 期间指针停在 Dock 上时预览可能仍可见，移动即消失。
+/// 与 Dock2Min 一致的细节：抖动阈值、悬停延时、0.3s 离开延时、缩略图治理。
+/// 命中判定比 Dock2Min 多一层：元素穿透拿不到「标题 + 图标矩形」时，退回 Dock 图标
+/// 快照做几何命中——这是悬停预览「时灵时不灵」的主要修复点。
 @MainActor
 public final class DockHoverPreviewPlugin: FeaturePlugin {
     public static let manifest = PluginManifest(
         id: "com.gaelthas.plugin.dock-hover-preview",
-        version: "1.0.0",
+        version: "1.0.1",
         minHostVersion: "1.0.0",
         title: "dockHover.title",
         summary: "dockHover.summary",
@@ -36,7 +36,9 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         let key: String
         let point: CGPoint
         let since: TimeInterval
-        let frame: CGRect?
+        let frame: CGRect
+        let bundleID: String?
+        let url: URL?
     }
 
     private var candidate: Candidate?
@@ -45,6 +47,17 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
     private var showTask: Task<Void, Never>?
     private var dismissTask: Task<Void, Never>?
     private var thumbnailTask: Task<Void, Never>?
+    /// 被节流吃掉的那一跳的补偿探测（指针停下后不会再有 move 事件）。
+    private var deferredProbe: Task<Void, Never>?
+
+    /// Dock 图标快照：命中失败时的几何兜底。枚举一次十几毫秒，按 TTL 复用。
+    private var catalog: [DockItem] = []
+    private var catalogAt: TimeInterval = 0
+    private var catalogFetchAt: TimeInterval = 0
+    private var catalogFetching = false
+    private let catalogTTL: TimeInterval = 1.5
+    /// 连续未命中时不要每次都重扫整棵树。
+    private let catalogRefetchInterval: TimeInterval = 0.6
 
     private let dismissDelay: TimeInterval = 0.3
     private let probeInterval: TimeInterval = 0.12
@@ -77,11 +90,15 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            let pid = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+                .processIdentifier
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     // 用户点到别处去了，预览没有继续存在的理由。
-                    guard let self, self.panel.isVisible else { return }
+                    // 自己成为激活应用（面板取 key）不算「点了别处」。
+                    guard let self, self.panel.isVisible,
+                          pid != ProcessInfo.processInfo.processIdentifier else { return }
                     self.dismiss(reason: "app activated")
                 }
             }
@@ -102,9 +119,11 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         showTask?.cancel()
         thumbnailTask?.cancel()
         dismissTask?.cancel()
+        deferredProbe?.cancel()
         showTask = nil
         thumbnailTask = nil
         dismissTask = nil
+        deferredProbe = nil
         dismiss(reason: "deactivate", silent: true)
         context = nil
     }
@@ -123,7 +142,7 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
 
         // 指针移进预览面板本身：保持显示，否则点不到卡片。
         let mouse = NSEvent.mouseLocation
-        if let frame = panel.frameInAppKit, frame.contains(mouse) {
+        if let frame = panel.frameInAppKit, frame.insetBy(dx: -2, dy: -2).contains(mouse) {
             dismissTask?.cancel()
             dismissTask = nil
             return
@@ -135,19 +154,39 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         }
 
         let now = ProcessInfo.processInfo.systemUptime
-        guard now - lastProbe >= probeInterval else { return }
-        lastProbe = now
+        let elapsed = now - lastProbe
+        guard elapsed >= probeInterval else {
+            // 指针停下后不会再有 move 事件：这一跳如果被节流吞掉，预览就一直不弹。
+            // 补一次延迟探测，保证「最后一跳」也能命中。
+            deferredProbe?.cancel()
+            let wait = probeInterval - elapsed
+            deferredProbe = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(wait))
+                guard !Task.isCancelled, let self else { return }
+                self.probe(at: point, now: ProcessInfo.processInfo.systemUptime)
+            }
+            return
+        }
+        probe(at: point, now: now)
+    }
 
+    private func probe(at point: CGPoint, now: TimeInterval) {
+        lastProbe = now
         guard let context else { return }
         let dockPID = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.processIdentifier ?? 0
+        guard dockPID > 0 else { return }
 
         Task { [weak self] in
+            guard let self else { return }
+            let catalog = await self.catalogSnapshot(context: context, dockPID: dockPID, now: now)
             let hit = (try? await context.performBackground {
-                DockIconResolver.icon(at: point, dockPID: dockPID)
-            }) ?? DockIconHit(isDock: false, title: nil, frame: nil)
-            guard let self, let model = self.settingsModel, model.enabled else { return }
+                DockHoverProbe.probe(point: point, dockPID: dockPID, catalog: catalog)
+            }) ?? .miss
 
-            guard hit.isDock, let title = hit.title else {
+            guard let model = self.settingsModel, model.enabled else { return }
+
+            // 没有「标题 + 图标矩形」就没法锚定面板：清掉候选并准备收起。
+            guard hit.isDock, let title = hit.title, let frame = hit.frame else {
                 self.clearCandidate()
                 self.scheduleDismiss()
                 return
@@ -165,7 +204,14 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
                 return
             }
 
-            self.candidate = Candidate(key: title, point: point, since: now, frame: hit.frame)
+            self.candidate = Candidate(
+                key: title,
+                point: point,
+                since: now,
+                frame: frame,
+                bundleID: hit.bundleID,
+                url: hit.url
+            )
             self.scheduleShow(after: model.hoverDelay)
         }
     }
@@ -175,23 +221,31 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         showTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(max(0.05, delay)))
             guard !Task.isCancelled, let self, let candidate = self.candidate else { return }
-            self.show(key: candidate.key, frame: candidate.frame)
+            // 计时期间指针已离开这个图标（或滑到别的图标上）：不弹。
+            let mouse = NSEvent.mouseLocation
+            let primaryHeight = NSScreen.screens.first?.frame.maxY ?? 0
+            let axPoint = CGPoint(x: mouse.x, y: primaryHeight - mouse.y)
+            guard candidate.frame.insetBy(dx: -6, dy: -6).contains(axPoint) else { return }
+            self.show(candidate)
         }
     }
 
-    private func show(key: String, frame: CGRect?) {
+    private func show(_ candidate: Candidate) {
         guard let context, let model = settingsModel else { return }
-        guard let anchor = frame else {
-            model.append("no icon frame for \(key)")
-            return
-        }
-        guard let app = AppNameMatcher.app(matchingTitle: key) else {
-            model.append("no running app for \(key)")
+        guard let app = AppNameMatcher.app(
+            matchingTitle: candidate.key,
+            bundleID: candidate.bundleID,
+            url: candidate.url
+        ) else {
+            model.append("no running app for \(candidate.key)")
             return
         }
 
         let pid = app.processIdentifier
-        let appName = app.localizedName ?? key
+        let appName = app.localizedName ?? candidate.key
+        let anchor = candidate.frame
+        let session = thumbnails.beginSession()
+        let thumbnailsAvailable = thumbnails.isAvailable
 
         Task { [weak self] in
             let windows = (try? await context.performBackground {
@@ -201,33 +255,33 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
             guard let self, let model = self.settingsModel else { return }
             guard !windows.isEmpty else {
                 model.append("\(appName): no windows")
+                // 上一个应用的面板还开着的话要收掉，否则会停在早已离开的图标上。
+                self.dismiss(reason: "no windows for \(appName)", silent: true)
                 return
             }
 
             let limited = Array(windows.prefix(max(1, model.maxWindows)))
-            self.currentKey = key
+            self.currentKey = candidate.key
             self.panel.show(
                 windows: limited,
                 appName: appName,
                 appIcon: app.icon,
                 mode: model.mode,
+                thumbnailsAvailable: thumbnailsAvailable,
                 showTitles: model.showWindowTitles,
                 anchor: anchor
             )
             model.append("show \(appName): \(limited.count) window(s)")
-            self.loadThumbnails(for: limited, session: self.thumbnails.beginSession())
+            self.loadThumbnails(for: limited, session: session)
         }
     }
 
     private func loadThumbnails(for windows: [HoverWindow], session: Int) {
-        guard let model = settingsModel, let context else { return }
+        guard let model = settingsModel else { return }
         guard model.mode == .thumbnails else { return }
-        guard context.permissions.status(of: .screenCapture) else {
-            model.append("thumbnails need screen recording; icons only")
-            return
-        }
-        guard !thumbnails.isCoolingDown else {
-            model.append("thumbnail capture cooling down")
+        // 授权 / 冷却判定统一交给 governor（先做静默 preflight）；不可用时面板已经是图标模式。
+        guard thumbnails.isAvailable else {
+            model.append("thumbnails unavailable; icons only")
             return
         }
 
@@ -239,12 +293,9 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
 
         thumbnailTask?.cancel()
         thumbnailTask = Task { [weak self] in
-            for window in windows {
-                guard !Task.isCancelled, let self, self.thumbnails.currentGeneration == session else { return }
-                guard self.thumbnails.shouldAttempt(window.windowID) else { continue }
-                if let image = await self.thumbnails.capture(windowID: window.windowID, session: session) {
-                    self.panel.setThumbnail(windowID: window.windowID, image: image)
-                }
+            guard let self else { return }
+            await self.thumbnails.captureAll(windows.map(\.windowID), session: session) { [weak self] windowID, image in
+                self?.panel.setThumbnail(windowID: windowID, image: image)
             }
         }
     }
@@ -269,9 +320,11 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         showTask?.cancel()
         thumbnailTask?.cancel()
         dismissTask?.cancel()
+        deferredProbe?.cancel()
         showTask = nil
         thumbnailTask = nil
         dismissTask = nil
+        deferredProbe = nil
         candidate = nil
         let wasVisible = panel.isVisible
         panel.hide()
@@ -286,6 +339,29 @@ public final class DockHoverPreviewPlugin: FeaturePlugin {
         candidate = nil
         showTask?.cancel()
         showTask = nil
+    }
+
+    // MARK: - Dock 图标快照
+
+    private func catalogSnapshot(context: PluginContext, dockPID: pid_t, now: TimeInterval) async -> [DockItem] {
+        if !catalog.isEmpty, now - catalogAt < catalogTTL {
+            return catalog
+        }
+        guard !catalogFetching else { return catalog }
+        guard now - catalogFetchAt >= catalogRefetchInterval else { return catalog }
+
+        catalogFetching = true
+        catalogFetchAt = now
+        let fresh = (try? await context.performBackground {
+            DockItemCatalog.items(dockPID: dockPID)
+        }) ?? []
+        catalogFetching = false
+
+        if !fresh.isEmpty {
+            catalog = fresh
+            catalogAt = ProcessInfo.processInfo.systemUptime
+        }
+        return catalog
     }
 
     // MARK: - 选择窗口

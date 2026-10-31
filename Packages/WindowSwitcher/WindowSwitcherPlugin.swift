@@ -11,7 +11,7 @@ import SwiftUI
 public final class WindowSwitcherPlugin: FeaturePlugin {
     public static let manifest = PluginManifest(
         id: "com.gaelthas.plugin.window-switcher",
-        version: "1.0.0",
+        version: "1.0.5",
         minHostVersion: "1.0.0",
         title: "windowSwitcher.title",
         summary: "windowSwitcher.summary",
@@ -196,11 +196,17 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
             // 枚举为空也把面板显示出来（Dock2Min 的「No Windows」空态）：
             // 否则用户只会看到「按了没反应」，分不清是插件没生效还是真的没有窗口。
             self.windows = Self.sorted(list, by: knownOrder)
-            self.selected = 0
+            // 与 Dock2Min/系统 Alt-Tab 一致：默认选中「下一个窗口」而不是当前窗口，
+            // 否则按一次 ⌥Tab 松手只是在原地激活自己，看起来像「没反应」。
+            let initial = self.windows.count > 1 ? 1 : 0
+            self.selected = initial
+            let session = self.thumbnails.beginSession()
+            let available = self.thumbnails.isAvailable
             self.panel.show(
                 windows: self.windows,
-                selected: 0,
+                selected: initial,
                 mode: model.mode,
+                thumbnailsAvailable: available,
                 showTitles: model.showWindowTitles,
                 onSelect: { [weak self] window in
                     // 点击卡片立即切换：与 Dock2Min 的 mouseHover 触发源行为一致。
@@ -210,7 +216,6 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
             model.append("opened with \(self.windows.count) window(s)")
             guard !self.windows.isEmpty else { return }
 
-            let session = self.thumbnails.beginSession()
             self.loadThumbnailsIfNeeded(session: session)
         }
     }
@@ -273,16 +278,18 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
         guard let model = settingsModel, let context else { return }
         guard model.mode == .thumbnails else { return }
 
-        guard context.permissions.status(of: .screenCapture) else {
-            model.append("thumbnails need screen recording; falling back to icons")
-            return
-        }
-        guard !thumbnails.isCoolingDown else {
-            model.append("thumbnail capture cooling down; icons only")
+        // 授权 / 冷却状态一律由 governor 判定（它会先做静默 preflight）：
+        // 不可用时面板已经退回图标模式，这里只负责记一条原因。
+        guard thumbnails.isAvailable else {
+            model.append(
+                context.permissions.status(of: .screenCapture)
+                    ? "thumbnail capture cooling down; icons only"
+                    : "thumbnails need screen recording; icons only"
+            )
             return
         }
 
-        // 屏上窗口优先：最小化/隐藏应用的窗口没有 backing surface，抓取多半失败。
+        // 屏上窗口优先：最小化/隐藏应用的窗口没有 backing surface，抓取更容易失败。
         let ordered = windows.filter(\.isOnScreen) + windows.filter { !$0.isOnScreen }
         let targets = Array(ordered.prefix(max(1, model.maxThumbnails)))
 
@@ -293,13 +300,11 @@ public final class WindowSwitcherPlugin: FeaturePlugin {
             }
         }
 
+        // 一次枚举批量抓取，逐张回流；旧会话的结果由代际号丢弃。
         thumbnailTask = Task { [weak self] in
-            for window in targets {
-                guard !Task.isCancelled, let self, self.thumbnails.currentGeneration == session else { return }
-                guard self.thumbnails.shouldAttempt(window.windowID) else { continue }
-                if let image = await self.thumbnails.capture(windowID: window.windowID, session: session) {
-                    self.panel.setThumbnail(windowID: window.windowID, image: image)
-                }
+            guard let self else { return }
+            await self.thumbnails.captureAll(targets.map(\.windowID), session: session) { [weak self] windowID, image in
+                self?.panel.setThumbnail(windowID: windowID, image: image)
             }
         }
     }

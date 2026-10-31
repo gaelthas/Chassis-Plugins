@@ -15,7 +15,7 @@ struct SwitcherView: View {
     }
 
     private var itemWidth: CGFloat {
-        state.mode == .thumbnails ? 220 : 100
+        state.useThumbnails ? 220 : 100
     }
 
     private var columns: [GridItem] {
@@ -43,7 +43,7 @@ struct SwitcherView: View {
                         SwitcherItemView(
                             window: window,
                             isSelected: index == state.selected,
-                            showThumbnail: state.mode == .thumbnails,
+                            showThumbnail: state.useThumbnails,
                             width: itemWidth,
                             state: state,
                             index: index,
@@ -97,6 +97,19 @@ private struct SwitcherItemView: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(width: width - 20, height: (width - 20) * 0.75)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    } else if let icon = state.icons[window.pid] {
+                        // 缩略图还没抓回来（或这个窗口抓不到）：先显示应用图标，
+                        // 比灰底占位框更能说明「这里是谁的窗口」。
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.gray.opacity(0.15))
+                            .frame(width: width - 20, height: (width - 20) * 0.75)
+                            .overlay(
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 64, height: 64)
+                                    .opacity(0.9)
+                            )
                     } else {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Color.gray.opacity(0.2))
@@ -154,9 +167,11 @@ private struct SwitcherItemView: View {
             state.selected = index
             onSelect(window)
         }
-        .onHover { hovering in
-            guard hovering else { return }
-            state.selected = index
+        // 与 Windows 一致：指针「停着不动」不改选中，只有真的移动了才跟随鼠标。
+        // `onContinuousHover` 每次鼠标移动都会回调，`hoverSelect` 里再做位移判定。
+        .onContinuousHover { phase in
+            guard case .active = phase else { return }
+            state.hoverSelect(index)
         }
     }
 }

@@ -11,7 +11,7 @@ import SwiftUI
 public final class DockActionsPlugin: FeaturePlugin {
     public static let manifest = PluginManifest(
         id: "com.gaelthas.plugin.dock-actions",
-        version: "1.0.0",
+        version: "1.0.1",
         minHostVersion: "1.0.0",
         title: "dockActions.title",
         summary: "dockActions.summary",
@@ -107,6 +107,7 @@ public final class DockActionsPlugin: FeaturePlugin {
         }
 
         let point = click.location
+        let appURL = app.bundleURL?.resolvingSymlinksInPath().standardizedFileURL
         let dockPID = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first?.processIdentifier ?? 0
         guard let context else { return }
 
@@ -115,8 +116,17 @@ public final class DockActionsPlugin: FeaturePlugin {
             let hit = try? await context.performBackground {
                 DockIconResolver.icon(at: point, dockPID: dockPID)
             }
-            guard let hit, hit.isDock, let title = hit.title else { return }
-            guard Self.namesMatch(title, appName) else { return }
+            guard let hit, hit.isDock else { return }
+            // 应用包路径优先（Dock2Min 的做法）：Dock 标签被重命名或本地化时名字匹配会失手。
+            let sameness: Bool
+            if let clickedURL = hit.url?.resolvingSymlinksInPath().standardizedFileURL, let appURL {
+                sameness = clickedURL == appURL
+            } else if let title = hit.title {
+                sameness = Self.namesMatch(title, appName)
+            } else {
+                sameness = false
+            }
+            guard sameness else { return }
             self.minimize(pid: pid, label: appName)
         }
     }
@@ -222,28 +232,53 @@ public final class DockActionsPlugin: FeaturePlugin {
         settingsModel?.clickToMinimize = enabled
     }
 
+    /// `index` 是从 1 开始的 Dock 位置（1 = 访达，见 `DockAppOrder`）。
     private func openDockSlot(_ index: Int) {
+        guard let context else { return }
         let apps = DockAppOrder.apps()
         guard apps.indices.contains(index - 1) else {
             settingsModel?.append("dock slot \(index) is empty")
             return
         }
         let slot = apps[index - 1]
+
+        // 只有「就是当前前台应用、且还有可见窗口」才按最小化处理；否则一律走
+        // `openApplication`——它同时覆盖「未运行 / 已最小化 / 在后台」三种情况，
+        // 而 `activate()` 只把应用带到前台，不会还原最小化的窗口。
         let front = NSWorkspace.shared.frontmostApplication
+        let frontPID: pid_t? = {
+            guard let front else { return nil }
+            if let bundleID = slot.bundleID { return front.bundleIdentifier == bundleID ? front.processIdentifier : nil }
+            return front.localizedName == slot.name ? front.processIdentifier : nil
+        }()
 
-        if let bundleID = slot.bundleID, front?.bundleIdentifier == bundleID, let pid = front?.processIdentifier {
-            minimize(pid: pid, label: slot.name)
+        guard let pid = frontPID else {
+            open(slot)
             return
         }
 
-        if let bundleID = slot.bundleID,
-           let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first,
-           !running.isTerminated {
-            activate(bundleID: bundleID, label: slot.name)
+        Task { [weak self] in
+            let visible = (try? await context.performBackground {
+                AXWindowOps.hasVisibleWindow(pid: pid)
+            }) ?? false
+            guard let self else { return }
+            if visible {
+                self.minimize(pid: pid, label: slot.name)
+            } else {
+                self.open(slot)
+            }
+        }
+    }
+
+    /// 打开 / 还原 / 激活：与 Dock 点击的语义一致。
+    private func open(_ slot: DockAppSlot) {
+        guard let url = slot.url else {
+            if let bundleID = slot.bundleID {
+                activate(bundleID: bundleID, label: slot.name)
+            }
             return
         }
 
-        guard let url = slot.url else { return }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { [weak self] _, error in

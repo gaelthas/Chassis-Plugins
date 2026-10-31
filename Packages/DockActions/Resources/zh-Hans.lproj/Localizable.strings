@@ -11,7 +11,7 @@
 "shortcuts.enabled" = "启用 Dock 快捷键";
 "shortcuts.modifiers" = "修饰键";
 "shortcuts.digitsSuffix" = " + 1~9";
-"shortcuts.help" = "%@ + 1~9：切换到 Dock 第 N 个应用（已是前台则最小化）；%@ + ↓：最小化当前应用。冲突的组合键会在此提示，且不会覆盖已有注册。";
+"shortcuts.help" = "%@ + 1~9：切换到 Dock 第 N 个位置的应用（第 1 个固定是访达；已是前台且有可见窗口则最小化）；%@ + ↓：最小化当前应用。冲突的组合键会在此提示，且不会覆盖已有注册。";
 "shortcuts.conflict" = "以下组合键注册失败：";
 
 "section.rules" = "应用名单";

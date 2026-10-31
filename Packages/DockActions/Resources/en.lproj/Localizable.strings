@@ -11,7 +11,7 @@
 "shortcuts.enabled" = "Enable Dock shortcuts";
 "shortcuts.modifiers" = "Modifiers";
 "shortcuts.digitsSuffix" = " + 1–9";
-"shortcuts.help" = "%@ + 1–9: switch to the Nth Dock app (minimize if already frontmost); %@ + ↓: minimize the current app. Conflicting combinations are reported here and never override an existing registration.";
+"shortcuts.help" = "%@ + 1–9: switch to the app at Dock position N (position 1 is always Finder; minimizes when that app is frontmost with a visible window); %@ + ↓: minimize the current app. Conflicting combinations are reported here and never override an existing registration.";
 "shortcuts.conflict" = "Failed to register:";
 
 "section.rules" = "App rules";

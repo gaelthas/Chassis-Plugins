@@ -9,8 +9,37 @@ final class SwitcherState {
     var selected = 0
     var showTitles = true
     var mode: WindowSwitcherModel.DisplayMode = .icons
+    /// 实际是否按缩略图渲染：`mode == .thumbnails` 但拿不到屏幕录制授权时保持 false，
+    /// 否则界面只剩一排灰色占位框（看起来就是「预览坏了」）。
+    var useThumbnails = false
     var thumbnails: [CGWindowID: NSImage] = [:]
     var icons: [pid_t: NSImage] = [:]
+
+    /// 面板弹出时的鼠标位置。Windows 的 Alt-Tab 里，指针只是「停在那儿」不会把
+    /// 选中挪到它下面的卡片上——面板正好在指针下方弹出时这一点尤其明显。
+    @ObservationIgnored private var hoverOrigin: CGPoint = .zero
+    /// 指针真正移动过之后，才允许鼠标悬停改变选中。
+    @ObservationIgnored private var hoverArmed = false
+    /// 视为「移动过」的最小位移（pt）：滤掉触控板抖动与面板弹出时的合成事件。
+    private static let hoverArmThreshold: CGFloat = 4
+
+    func resetHoverTracking(origin: CGPoint) {
+        hoverOrigin = origin
+        hoverArmed = false
+    }
+
+    /// 鼠标悬停到第 `index` 张卡片：只有指针确实移动过才生效。
+    func hoverSelect(_ index: Int) {
+        if !hoverArmed {
+            let mouse = NSEvent.mouseLocation
+            let dx = mouse.x - hoverOrigin.x
+            let dy = mouse.y - hoverOrigin.y
+            guard (dx * dx + dy * dy).squareRoot() >= Self.hoverArmThreshold else { return }
+            hoverArmed = true
+        }
+        guard selected != index else { return }
+        selected = index
+    }
 }
 
 /// 面板行为对齐 Dock2Min 的 `AltTabManager.showPanel()`：
@@ -25,6 +54,7 @@ final class SwitcherPanel {
         windows: [SwitcherWindow],
         selected: Int,
         mode: WindowSwitcherModel.DisplayMode,
+        thumbnailsAvailable: Bool,
         showTitles: Bool,
         onSelect: @escaping (SwitcherWindow) -> Void
     ) {
@@ -32,16 +62,21 @@ final class SwitcherPanel {
         state.selected = selected
         state.showTitles = showTitles
         state.mode = mode
+        state.useThumbnails = mode == .thumbnails && thumbnailsAvailable
         state.thumbnails = [:]
         state.icons = Self.icons(for: windows)
+        // 在面板显示前记录指针位置：弹出瞬间如果指针正好压在某张卡片上，
+        // 不能因此改掉「默认选中下一个窗口」。
+        state.resetHoverTracking(origin: NSEvent.mouseLocation)
 
         ensurePanel()
         // 重建内容视图：Dock2Min 用同样的方式保证每次弹出都播放淡入/上移。
-        panel?.contentViewController = NSHostingController(
-            rootView: SwitcherView(state: state, onSelect: onSelect)
-        )
-        position()
-        panel?.makeKeyAndOrderFront(nil)
+        let hosting = NSHostingController(rootView: SwitcherView(state: state, onSelect: onSelect))
+        panel?.contentViewController = hosting
+        position(host: hosting)
+        // 应用是老后台的常驻进程：`makeKeyAndOrderFront` 不保证在非激活状态下顶到最前。
+        panel?.orderFrontRegardless()
+        panel?.makeKey()
     }
 
     func update(selected: Int) {
@@ -76,27 +111,24 @@ final class SwitcherPanel {
         self.panel = panel
     }
 
-    private func position() {
+    private func position(host: NSViewController) {
         guard let panel,
-              let contentView = panel.contentViewController?.view,
               let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main else {
             return
         }
 
-        contentView.layout()
-        var fitting = contentView.fittingSize
+        // SwiftUI 视图还没完成布局时 `fittingSize` 可能是 0：先强制布局再量，
+        // 并给一个可用下限，否则面板是 0×0——表现就是「⌥Tab 没有任何反应」。
+        let view = host.view
+        view.layoutSubtreeIfNeeded()
+        var fitting = view.fittingSize
+        fitting.width = max(fitting.width, 360)
+        fitting.height = max(fitting.height, 180)
+
         let visible = screen.visibleFrame
-
-        // fittingSize 在极端情况下可能是 0（视图还没完成布局）：给一个可用下限，
-        // 否则面板是 0×0，看起来就是「⌥Tab 没有任何反应」。
-        fitting.width = max(fitting.width, 320)
-        fitting.height = max(fitting.height, 160)
-
+        fitting.width = min(fitting.width, visible.width - 16)
         // 窗口很多时卡片会超过屏幕高度：夹在可视区域内，保证标题栏不出屏。
-        let maxHeight = visible.height - 16
-        if fitting.height > maxHeight {
-            fitting.height = maxHeight
-        }
+        fitting.height = min(fitting.height, visible.height - 16)
 
         let origin = NSPoint(
             x: visible.origin.x + (visible.width - fitting.width) / 2,

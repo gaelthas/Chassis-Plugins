@@ -73,6 +73,11 @@ package() {
   fi
   cp "$manifest" "$bundle/Contents/Resources/manifest.json"
 
+  # 版本号以清单为准：基座读清单，但 Info.plist 也跟着走，
+  # 免得 `defaults read` / 系统面板里永远显示 1.0.0。
+  local version
+  version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$manifest")"
+
   cat > "$bundle/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -87,9 +92,9 @@ package() {
     <key>CFBundlePackageType</key>
     <string>BNDL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>$version</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$version</string>
 </dict>
 </plist>
 PLIST
