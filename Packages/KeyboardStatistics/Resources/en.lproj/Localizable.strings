@@ -1,0 +1,37 @@
+"kb.title" = "Keyboard Stats";
+"kb.summary" = "Count how often each key is pressed, shown as a keyboard heatmap with per-day bars";
+"plugin.inactive" = "Plugin is not active";
+
+"section.behavior" = "Behavior";
+"kb.enabled" = "Enable key counting";
+"kb.privacy" = "Only press counts are stored: no input contents, no key combinations, no app or window association. Data never leaves this Mac.";
+
+"section.heatmap" = "Keyboard heatmap";
+"range.label" = "Range";
+"range.date" = "Date";
+"range.jumpToday" = "Jump to today";
+"range.day" = "Day";
+"range.week" = "Last 7 days";
+"range.month" = "Last 30 days";
+"range.all" = "All";
+"range.custom" = "Custom";
+"range.from" = "From";
+"range.to" = "To";
+"heatmap.total" = "Total presses";
+"count.format" = "%d";
+"heatmap.empty" = "No data in this range yet — type a few keys to see the distribution.";
+"heatmap.legendLow" = "Less";
+"heatmap.legendHigh" = "More";
+"heatmap.tooltip" = "%@: %d";
+"heatmap.others" = "Keys outside the layout (function keys, keypad, …)";
+
+"section.daily" = "Trend";
+"daily.hour" = "Per hour";
+"daily.day" = "Per day";
+"daily.peak" = "Peak %d";
+"daily.empty" = "No data yet.";
+"daily.tooltipHour" = "%@:00 — %d";
+"daily.tooltipDay" = "%@ — %d";
+
+"kb.reset" = "Clear statistics";
+"kb.note" = "Kept for the last 30 days; %d day(s) recorded.";

@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "WindowSwitcher", targets: ["WindowSwitcher"]),
         .library(name: "DockHoverPreview", targets: ["DockHoverPreview"]),
         .library(name: "UsageStatistics", targets: ["UsageStatistics"]),
+        .library(name: "KeyboardStatistics", targets: ["KeyboardStatistics"]),
     ],
     dependencies: [
         .package(path: "../Packages/PluginAPI"),
@@ -70,6 +71,14 @@ let package = Package(
                 .product(name: "PluginAPI", package: "PluginAPI"),
             ],
             path: "Packages/UsageStatistics",
+            resources: [.process("Resources")]
+        ),
+        .target(
+            name: "KeyboardStatistics",
+            dependencies: [
+                .product(name: "PluginAPI", package: "PluginAPI"),
+            ],
+            path: "Packages/KeyboardStatistics",
             resources: [.process("Resources")]
         ),
     ]

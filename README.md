@@ -16,6 +16,7 @@ Chassis/                      ← 基座仓库
         ├── WindowSwitcher/   ← ⌥Tab 窗口级切换器（图标 / 实时缩略图）
         ├── DockHoverPreview/ ← Dock 悬停窗口预览（图标 / 实时缩略图）
         ├── UsageStatistics/  ← 应用使用时长统计（零权限）
+        ├── KeyboardStatistics/ ← 按键次数统计（键盘热力图 + 每日柱状图）
         └── Harness/          ← 基座探针插件（仅 Debug 注册）
 ```
 

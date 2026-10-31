@@ -1,0 +1,37 @@
+"kb.title" = "键盘统计";
+"kb.summary" = "统计每个按键的使用次数，用键盘热力图与次数柱状图展示";
+"plugin.inactive" = "插件未激活";
+
+"section.behavior" = "行为";
+"kb.enabled" = "启用按键计数";
+"kb.privacy" = "只记录按键次数：不保存输入内容、不保存组合键，也不关联窗口或应用。数据仅存在本机。";
+
+"section.heatmap" = "键盘热力图";
+"range.label" = "统计范围";
+"range.date" = "日期";
+"range.jumpToday" = "回到今天";
+"range.day" = "当天";
+"range.week" = "近 7 天";
+"range.month" = "近 30 天";
+"range.all" = "全部";
+"range.custom" = "自定义";
+"range.from" = "从";
+"range.to" = "到";
+"heatmap.total" = "总按键数";
+"count.format" = "%d 次";
+"heatmap.empty" = "所选范围还没有数据，敲几下键盘即可看到分布。";
+"heatmap.legendLow" = "少";
+"heatmap.legendHigh" = "多";
+"heatmap.tooltip" = "%@：%d 次";
+"heatmap.others" = "布局外的按键（F 键 / 小键盘等）";
+
+"section.daily" = "次数趋势";
+"daily.hour" = "当天每小时";
+"daily.day" = "每日次数";
+"daily.peak" = "峰值 %d 次";
+"daily.empty" = "暂无数据。";
+"daily.tooltipHour" = "%@ 时：%d 次";
+"daily.tooltipDay" = "%@：%d 次";
+
+"kb.reset" = "清除统计记录";
+"kb.note" = "只保留最近 30 天的记录，当前有 %d 天数据。";

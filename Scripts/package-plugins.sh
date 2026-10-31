@@ -108,6 +108,7 @@ package SlowQuit           com.gaelthas.plugin.slow-quit
 package WindowSwitcher     com.gaelthas.plugin.window-switcher
 package DockHoverPreview   com.gaelthas.plugin.dock-hover-preview
 package UsageStatistics    com.gaelthas.plugin.usage-statistics
+package KeyboardStatistics com.gaelthas.plugin.keyboard-statistics
 
 echo
 echo "插件包目录：$DIST"

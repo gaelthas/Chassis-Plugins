@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "com.gaelthas.plugin.keyboard-statistics",
+  "version": "1.0.0",
+  "minHostVersion": "1.0.0",
+  "apiVersion": 1,
+  "title": {
+    "zh-Hans": "键盘统计",
+    "en": "Keyboard Stats"
+  },
+  "summary": {
+    "zh-Hans": "统计每个按键的使用次数，用键盘热力图与次数柱状图展示",
+    "en": "Count how often each key is pressed, shown as a keyboard heatmap with per-day bars"
+  },
+  "iconSystemName": "keyboard",
+  "requiredCapabilities": [
+    "inputMonitoring"
+  ],
+  "optionalCapabilities": [],
+  "vendor": "gaelthas"
+}

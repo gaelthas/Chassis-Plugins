@@ -32,11 +32,12 @@ plugin_id() {
     WindowSwitcher)   echo "com.gaelthas.plugin.window-switcher" ;;
     DockHoverPreview) echo "com.gaelthas.plugin.dock-hover-preview" ;;
     UsageStatistics)  echo "com.gaelthas.plugin.usage-statistics" ;;
+    KeyboardStatistics) echo "com.gaelthas.plugin.keyboard-statistics" ;;
     *) echo "" ;;
   esac
 }
 
-ALL_PLUGINS=(DockActions SlowQuit WindowSwitcher DockHoverPreview UsageStatistics)
+ALL_PLUGINS=(DockActions SlowQuit WindowSwitcher DockHoverPreview UsageStatistics KeyboardStatistics)
 if [ ${#TARGETS[@]} -eq 0 ]; then
   TARGETS=("${ALL_PLUGINS[@]}")
 fi
